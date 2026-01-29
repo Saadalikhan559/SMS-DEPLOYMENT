@@ -4,7 +4,7 @@ export const constants = {
 
   // baseUrl: "https://smsproject1.pythonanywhere.com/", //deployed for testing
   // baseUrl: "https://smsproject.pythonanywhere.com/", //deployed for school NPEPS deployed
-  // baseUrl: "https://newprogressive.pythonanywhere.com/", //deployed for school newprogressive testing
+  baseUrl: "https://newprogressive.pythonanywhere.com/", //deployed for school newprogressive testing
   // baseUrl: "https://superkidz.pythonanywhere.com/",
   // baseUrl: "https://superkidsschool.pythonanywhere.com/", //deployed for school SUPER KIDS
   // baseUrl: "https://187gwsw1-8000.inc1.devtunnels.ms/", //farha
@@ -13,7 +13,7 @@ export const constants = {
   // baseUrl: "https://gl8tx74f-7000.inc1.devtunnels.ms", //farheen
   // baseUrl: "https://2gqlk571-8000.inc1.devtunnels.ms", //saqib
   // baseUrl:"https://958cp4w5-8000.inc1.devtunnels.ms/", //saba
-  baseUrl: "https://94f38xkg-8000.inc1.devtunnels.ms", //naaz
+  // baseUrl: "https://94f38xkg-8000.inc1.devtunnels.ms", //naaz
   // baseUrl: "https://94f38xkg-7000.inc1.devtunnels.ms/", //naaz
   //  baseUrl:"https://2lw4clk2-8000.inc1.devtunnels.ms", //shahbaz
   //  baseUrl:"https://187gwsw1-8000.inc1.devtunnels.ms/", //farha
