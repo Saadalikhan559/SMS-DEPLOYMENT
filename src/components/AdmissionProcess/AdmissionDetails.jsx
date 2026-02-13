@@ -310,15 +310,9 @@ export const AdmissionDetails = () => {
 
   const filterBysearch = filterData.filter((detail) => {
     const search = searchInput.toLowerCase();
-
-    // Ensure student_input and guardian_input are always objects
     const student = detail.student_input || {};
-    const guardian = detail.guardian_input || {};
-
     const studentName = `${student.first_name ?? ""} ${student.last_name ?? ""}`.toLowerCase();
-    const guardianName = `${guardian.first_name ?? ""} ${guardian.last_name ?? ""}`.toLowerCase();
-
-    return studentName.includes(search) || guardianName.includes(search);
+    return studentName.startsWith(search) ;
   });
 
   const sortedData = [...filterBysearch].sort((a, b) => {
@@ -426,7 +420,7 @@ export const AdmissionDetails = () => {
               <div className="flex flex-col w-full sm:w-auto">
                 <input
                   type="text"
-                  placeholder="Student Name or Guardian Name"
+                  placeholder="Student Name"
                   className="input input-bordered w-full sm:w-64 focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value.trimStart())}
@@ -448,7 +442,8 @@ export const AdmissionDetails = () => {
                         <thead className="bgTheme text-white z-2 sticky top-0">
                           <tr>
                             <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Student Name</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Parent/Guardian</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Father Name</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Mother Name</th>
                             <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Date of Birth</th>
                             <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Gender</th>
                             <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Class</th>
@@ -467,10 +462,11 @@ export const AdmissionDetails = () => {
                                 <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
                                   {detail.student_input?.first_name ?? ""} {detail.student_input?.last_name ?? ""}
                                 </td>
-
-                                {/* Parent/Guardian */}
-                                <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-300">
-                                  {detail.guardian_input?.first_name ?? ""} {detail.guardian_input?.last_name ?? ""} ({detail.guardian_type || "N/A"})
+                                <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                                  {detail.student_input?.father_name ?? ""}
+                                </td>
+                                <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                                  {detail.student_input?.mother_name ?? ""} 
                                 </td>
 
                                 {/* Date of Birth */}
