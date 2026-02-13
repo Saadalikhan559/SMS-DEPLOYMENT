@@ -74,7 +74,6 @@ const UpdateStudentDetail = () => {
     if (formData.user_profile && formData.user_profile instanceof File) {
       payload.append("user_profile", formData.user_profile);
     }
-    // ----------------- Ensure student remains active -----------------
     payload.append("is_active", formData.is_active ?? true);
     payload.append("status", formData.status ?? "active");
 

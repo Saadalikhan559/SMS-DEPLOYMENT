@@ -22,6 +22,8 @@ export const Register = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(true);
+  const authTokens = localStorage.getItem("authTokens");
+  const accessToken = authTokens ? JSON.parse(authTokens).access : null;
 
   const {
     register,
@@ -30,7 +32,6 @@ export const Register = () => {
   } = useForm({
     mode: "onChange",
   });
-
 
   useEffect(() => {
     const getRoles = async () => {
@@ -45,7 +46,7 @@ export const Register = () => {
   }, []);
 
   const filteredRoles = allRoles.filter(
-    (role) => role.name === "teacher" || role.name === "office staff"
+    (role) => role.name === "teacher" || role.name === "office staff",
   );
 
   const onSubmit = async (data) => {
@@ -80,14 +81,27 @@ export const Register = () => {
 
       <div className="min-h-screen flex flex-col md:flex-row">
         <div className="hidden md:block md:w-2/3 formBgColor">
-          <img src={image} alt="Authentication" className="w-full h-full object-cover" />
+          <img
+            src={image}
+            alt="Authentication"
+            className="w-full h-full object-cover"
+          />
         </div>
 
         <div className="w-full md:w-1/2 lg:w-1/3 flex items-center justify-center p-4">
-          <form className="w-full max-w-md space-y-2" onSubmit={handleSubmit(onSubmit)}>
-            <h1 className="text-3xl font-bold text-center mb-6">Create an Account</h1>
+          <form
+            className="w-full max-w-md space-y-2"
+            onSubmit={handleSubmit(onSubmit)}
+          >
+            <h1 className="text-3xl font-bold text-center mb-6">
+              Create an Account
+            </h1>
 
-            {error && <div className="text-red-500 text-center font-medium">{error}</div>}
+            {error && (
+              <div className="text-red-500 text-center font-medium">
+                {error}
+              </div>
+            )}
 
             {/* First Name */}
             <div className="form-control w-full">
@@ -100,7 +114,8 @@ export const Register = () => {
                 autoComplete="on"
                 className="input input-bordered w-full focus:outline-none"
                 {...register("firstName", {
-                  validate: (val) => validfirstname(val) === "" || validfirstname(val),
+                  validate: (val) =>
+                    validfirstname(val) === "" || validfirstname(val),
                 })}
               />
               {errors.firstName && (
@@ -121,7 +136,8 @@ export const Register = () => {
                 autoComplete="on"
                 className="input input-bordered w-full focus:outline-none"
                 {...register("lastName", {
-                  validate: (val) => validlastname(val) === "" || validlastname(val),
+                  validate: (val) =>
+                    validlastname(val) === "" || validlastname(val),
                 })}
               />
               {errors.lastName && (
@@ -142,7 +158,8 @@ export const Register = () => {
                 autoComplete="on"
                 className="input input-bordered w-full focus:outline-none"
                 {...register("email", {
-                  validate: (val) => validregisteremail(val) === "" || validregisteremail(val),
+                  validate: (val) =>
+                    validregisteremail(val) === "" || validregisteremail(val),
                 })}
               />
               {errors.email && (
@@ -160,7 +177,8 @@ export const Register = () => {
               <select
                 className="select select-bordered w-full focus:outline-none"
                 {...register("roleId", {
-                  validate: (val) => validregisterrole(val) === "" || validregisterrole(val),
+                  validate: (val) =>
+                    validregisterrole(val) === "" || validregisterrole(val),
                 })}
               >
                 <option value="">Select Role</option>
@@ -188,7 +206,8 @@ export const Register = () => {
                   <div className="relative group inline-block">
                     <i className="fa-solid fa-circle-info text-sm cursor-pointer"></i>
                     <div className="absolute left-1/2 -translate-x-1/2 -top-8 whitespace-nowrap bg-gray-800 text-white text-xs px-3 py-1 rounded shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-300 z-10">
-                      Password must be at least 8 characters, include one letter, one number, and one special character
+                      Password must be at least 8 characters, include one
+                      letter, one number, and one special character
                     </div>
                   </div>
                 </div>
@@ -199,7 +218,9 @@ export const Register = () => {
                 autoComplete="on"
                 className="input input-bordered w-full focus:outline-none"
                 {...register("password", {
-                  validate: (val) => validregisterpassword(val) === "" || validregisterpassword(val),
+                  validate: (val) =>
+                    validregisterpassword(val) === "" ||
+                    validregisterpassword(val),
                 })}
               />
               <button
@@ -207,7 +228,9 @@ export const Register = () => {
                 className="passwordEyes text-gray-500"
                 onClick={() => setShowPassword(!showPassword)}
               >
-                <i className={`fa-solid ${showPassword ? "fa-eye-slash" : "fa-eye"}`}></i>
+                <i
+                  className={`fa-solid ${showPassword ? "fa-eye-slash" : "fa-eye"}`}
+                ></i>
               </button>
               {errors.password && (
                 <span className="text-red-500 text-sm mt-1">
@@ -228,13 +251,17 @@ export const Register = () => {
               </button>
             </div>
 
+            {!accessToken ? (
+              <p className="text-sm text-center mt-4">
+                Already have an account?{" "}
+                <Link to="/login" className="textTheme font-semibold">
+                  Login here
+                </Link>
+              </p>
+            ) : (
+              <></>
+            )}
             {/* Redirect */}
-            <p className="text-sm text-center mt-4">
-              Already have an account?{" "}
-              <Link to="/login" className="textTheme font-semibold">
-                Login here
-              </Link>
-            </p>
           </form>
         </div>
       </div>
@@ -257,7 +284,6 @@ export const Register = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };
