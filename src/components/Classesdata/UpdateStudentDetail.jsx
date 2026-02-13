@@ -52,20 +52,28 @@ const UpdateStudentDetail = () => {
 
     // ----------------- Directly append each field -----------------
     if (formData.first_name) payload.append("first_name", formData.first_name);
-    if (formData.middle_name) payload.append("middle_name", formData.middle_name);
+    if (formData.middle_name)
+      payload.append("middle_name", formData.middle_name);
     if (formData.last_name) payload.append("last_name", formData.last_name);
     if (formData.email) payload.append("email", formData.email);
-    if (formData.date_of_birth) payload.append("date_of_birth", formData.date_of_birth);
+    if (formData.date_of_birth)
+      payload.append("date_of_birth", formData.date_of_birth);
     if (formData.gender) payload.append("gender", formData.gender);
     if (formData.height) payload.append("height", formData.height);
     if (formData.weight) payload.append("weight", formData.weight);
-    if (formData.number_of_siblings !== undefined && formData.number_of_siblings !== "") {
+    if (
+      formData.number_of_siblings !== undefined &&
+      formData.number_of_siblings !== ""
+    ) {
       payload.append("number_of_siblings", formData.number_of_siblings);
     }
-    if (formData.father_name) payload.append("father_name", formData.father_name);
-    if (formData.mother_name) payload.append("mother_name", formData.mother_name);
-    if (formData.user_profile) payload.append("user_profile", formData.user_profile);
-
+    if (formData.father_name)
+      payload.append("father_name", formData.father_name);
+    if (formData.mother_name)
+      payload.append("mother_name", formData.mother_name);
+    if (formData.user_profile && formData.user_profile instanceof File) {
+      payload.append("user_profile", formData.user_profile);
+    }
     // ----------------- Ensure student remains active -----------------
     payload.append("is_active", formData.is_active ?? true);
     payload.append("status", formData.status ?? "active");
@@ -101,7 +109,9 @@ const UpdateStudentDetail = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center p-6">
         <i className="fa-solid fa-triangle-exclamation text-5xl text-red-400 mb-4"></i>
-        <p className="text-lg text-red-400 font-medium">Failed to load data, Try Again</p>
+        <p className="text-lg text-red-400 font-medium">
+          Failed to load data, Try Again
+        </p>
       </div>
     );
   }
@@ -111,7 +121,8 @@ const UpdateStudentDetail = () => {
       <div className="p-6 bg-gray-100 dark:bg-gray-900 min-h-screen mb-24 md:mb-10">
         <div className="max-w-7xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-lg shadow">
           <h1 className="text-3xl font-bold mb-8 text-center text-gray-900 dark:text-gray-100">
-            <i className="fa-solid fa-pen-to-square mr-2"></i> Update Student Details
+            <i className="fa-solid fa-pen-to-square mr-2"></i> Update Student
+            Details
           </h1>
 
           <form
@@ -136,7 +147,9 @@ const UpdateStudentDetail = () => {
                 className="input input-bordered w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
               />
               {errors.first_name && (
-                <span className="text-red-400 text-sm mt-1">{errors.first_name.message}</span>
+                <span className="text-red-400 text-sm mt-1">
+                  {errors.first_name.message}
+                </span>
               )}
             </div>
 
@@ -158,7 +171,9 @@ const UpdateStudentDetail = () => {
                 className="input input-bordered w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
               />
               {errors.middle_name && (
-                <span className="text-red-400 text-sm mt-0">{errors.middle_name.message}</span>
+                <span className="text-red-400 text-sm mt-0">
+                  {errors.middle_name.message}
+                </span>
               )}
             </div>
 
@@ -178,7 +193,9 @@ const UpdateStudentDetail = () => {
                 className="input input-bordered w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
               />
               {errors.last_name && (
-                <span className="text-red-400 text-sm mt-0">{errors.last_name.message}</span>
+                <span className="text-red-400 text-sm mt-0">
+                  {errors.last_name.message}
+                </span>
               )}
             </div>
 
@@ -198,7 +215,9 @@ const UpdateStudentDetail = () => {
                 className="input input-bordered w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
               />
               {errors.email && (
-                <span className="text-red-400 text-sm mt-0">{errors.email.message}</span>
+                <span className="text-red-400 text-sm mt-0">
+                  {errors.email.message}
+                </span>
               )}
             </div>
 
@@ -210,12 +229,15 @@ const UpdateStudentDetail = () => {
                 {...register("date_of_birth", {
                   required: "Date of birth is required",
                   validate: (value) =>
-                    new Date(value) <= new Date() || "Future dates are not allowed",
+                    new Date(value) <= new Date() ||
+                    "Future dates are not allowed",
                 })}
                 className="input input-bordered w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
               />
               {errors.date_of_birth && (
-                <span className="text-red-400 text-sm mt-0">{errors.date_of_birth.message}</span>
+                <span className="text-red-400 text-sm mt-0">
+                  {errors.date_of_birth.message}
+                </span>
               )}
             </div>
 
@@ -232,7 +254,9 @@ const UpdateStudentDetail = () => {
                 <option value="Other">Other</option>
               </select>
               {errors.gender && (
-                <span className="text-red-400 text-sm mt-0">{errors.gender.message}</span>
+                <span className="text-red-400 text-sm mt-0">
+                  {errors.gender.message}
+                </span>
               )}
             </div>
 
@@ -256,7 +280,9 @@ const UpdateStudentDetail = () => {
                 className="input input-bordered w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
               />
               {errors.height && (
-                <span className="text-red-400 text-sm mt-0">{errors.height.message}</span>
+                <span className="text-red-400 text-sm mt-0">
+                  {errors.height.message}
+                </span>
               )}
             </div>
 
@@ -280,7 +306,9 @@ const UpdateStudentDetail = () => {
                 className="input input-bordered w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
               />
               {errors.weight && (
-                <span className="text-red-400 text-sm mt-0">{errors.weight.message}</span>
+                <span className="text-red-400 text-sm mt-0">
+                  {errors.weight.message}
+                </span>
               )}
             </div>
 
@@ -294,7 +322,8 @@ const UpdateStudentDetail = () => {
                   validate: (value) => {
                     if (value === "" || value === undefined) return true;
                     if (parseInt(value) < 0) return "Cannot be negative";
-                    if (parseInt(value) > 10) return "Maximum 10 siblings allowed";
+                    if (parseInt(value) > 10)
+                      return "Maximum 10 siblings allowed";
                     return true;
                   },
                 })}
@@ -312,7 +341,9 @@ const UpdateStudentDetail = () => {
                 className="input input-bordered w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
               />
               {errors.number_of_siblings && (
-                <span className="text-red-400 text-sm mt-0.5">{errors.number_of_siblings.message}</span>
+                <span className="text-red-400 text-sm mt-0.5">
+                  {errors.number_of_siblings.message}
+                </span>
               )}
             </div>
 
@@ -328,7 +359,9 @@ const UpdateStudentDetail = () => {
                 className="input input-bordered w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
               />
               {errors.father_name && (
-                <span className="text-red-400 text-sm mt-0">{errors.father_name.message}</span>
+                <span className="text-red-400 text-sm mt-0">
+                  {errors.father_name.message}
+                </span>
               )}
             </div>
 
@@ -344,7 +377,9 @@ const UpdateStudentDetail = () => {
                 className="input input-bordered w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
               />
               {errors.mother_name && (
-                <span className="text-red-400 text-sm mt-0">{errors.mother_name.message}</span>
+                <span className="text-red-400 text-sm mt-0">
+                  {errors.mother_name.message}
+                </span>
               )}
             </div>
 
@@ -386,4 +421,3 @@ const UpdateStudentDetail = () => {
 };
 
 export default UpdateStudentDetail;
-

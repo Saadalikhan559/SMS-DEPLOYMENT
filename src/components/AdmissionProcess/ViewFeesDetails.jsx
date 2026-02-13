@@ -134,79 +134,78 @@ export const ViewFeesDetails = () => {
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between">
-            {/* <h1 className="text-7xl font-extrabold uppercase leading-none tracking-tight text-yellow-600">
-              4s
-            </h1> */}
             <img src={img} alt="logo Not found" className="logoImg" />
-
             <div className="flex flex-col items-end">
-              <h2 className="text-xl font-bold uppercase leading-tight text-center">
+              <h2 className="text-xl font-bold uppercase leading-tight text-center text-black">
                 New Progressive Education Public School
               </h2>
-
               <div className="mt-2 text-sm text-gray-700 text-center w-full">
-                <p className="leading-tight font-bold">Bhopal - 462 001</p>
-                <p className="leading-tight font-bold">Tel.: 0755 2538456</p>
+                <p className="leading-tight font-bold text-black">
+                  Bhopal - 462 001
+                </p>
+                <p className="leading-tight font-bold text-black">
+                  Tel.: 0755 2538456
+                </p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Details */}
-        <div className="text-sm mb-4 space-y-2">
+        <div className="text-sm mb-4 space-y-2 text-black">
           <div className="flex justify-between">
-            <p>
+            <p className="text-black">
               Receipt No.:{" "}
               <span className="font-semibold text-red-600">
                 {feeSummary.receipt_number || "--"}
               </span>
             </p>
-            <p>
+            <p className="text-black">
               Date:{" "}
-              <span className="font-semibold">
+              <span className="font-semibold text-black">
                 {formatDate(feeSummary.payment_date)}
               </span>
             </p>
           </div>
 
           <div>
-            <p>
+            <p className="text-black">
               Child's Name:{" "}
-              <span className="font-semibold capitalize">
+              <span className="font-semibold capitalize text-black">
                 {feeSummary.student?.name || "--"}
               </span>
             </p>
           </div>
 
           <div>
-            <p>
+            <p className="text-black">
               Parent's Name:{" "}
-              <span className="font-semibold capitalize">
+              <span className="font-semibold capitalize text-black">
                 {feeSummary.student?.father_name || "Not Mentioned"}
               </span>
             </p>
           </div>
 
           <div>
-            <p>
+            <p className="text-black">
               Months:{" "}
-              <span className="font-semibold capitalize">
+              <span className="font-semibold capitalize text-black">
                 {months.length > 0 ? months.join(", ") : "--"}
               </span>
             </p>
           </div>
 
           <div className="grid grid-cols-3">
-            <p>
+            <p className="text-black">
               Grade:{" "}
-              <span className="font-semibold">
+              <span className="font-semibold text-black">
                 {feeSummary.student?.class_name || "Not Mentioned"}
               </span>
             </p>
 
-            <p>
+            <p className="text-black">
               Section:{" "}
-              <span className="font-semibold">
+              <span className="font-semibold text-black">
                 {feeSummary.student?.class_section || "Not Mentioned"}
               </span>
             </p>
@@ -217,10 +216,10 @@ export const ViewFeesDetails = () => {
         <table className="w-full text-sm border border-gray-400">
           <thead className="bg-gray-100">
             <tr>
-              <th className="border border-gray-400 p-2 text-left">
+              <th className="border border-gray-400 p-2 text-left text-black">
                 Particulars
               </th>
-              <th className="border border-gray-400 p-2 text-right">
+              <th className="border border-gray-400 p-2 text-right text-black">
                 Amount (Rs.)
               </th>
             </tr>
@@ -228,57 +227,73 @@ export const ViewFeesDetails = () => {
 
           <tbody>
             <tr>
-              <td className="border p-2 text-left">Admission Fee</td>
-              <td className="border p-2 text-right">
+              <td className="border border-gray-400 p-2 text-left text-black">
+                Admission Fee
+              </td>
+              <td className="border border-gray-400 p-2 text-right text-black">
                 {getTotal("Admission Fee")}/-
               </td>
             </tr>
 
             <tr>
-              <td className="border p-2 text-left">Caution Money</td>
-              <td className="border p-2 text-right">
+              <td className="border border-gray-400 p-2 text-left text-black">
+                Caution Money
+              </td>
+              <td className="border border-gray-400 p-2 text-right text-black">
                 {getTotal("Caution Fee")}/-
               </td>
             </tr>
 
             <tr>
-              <td className="border p-2 text-left">Exam Fees</td>
-              <td className="border p-2 text-right">
+              <td className="border border-gray-400 p-2 text-left text-black">
+                Exam Fees
+              </td>
+              <td className="border border-gray-400 p-2 text-right text-black">
                 {getTotal("Exam Fee")}/-
               </td>
             </tr>
 
             <tr>
-              <td className="border p-2 text-left">Maintenance</td>
-              <td className="border p-2 text-right">
+              <td className="border border-gray-400 p-2 text-left text-black">
+                Maintenance
+              </td>
+              <td className="border border-gray-400 p-2 text-right text-black">
                 {getTotal("Maintenance")}/-
               </td>
             </tr>
 
             <tr>
-              <td className="border p-2 text-left">Tuition Fees</td>
-              <td className="border p-2 text-right">
+              <td className="border border-gray-400 p-2 text-left text-black">
+                Tuition Fees
+              </td>
+              <td className="border border-gray-400 p-2 text-right text-black">
                 {getTotal("Tuition Fee")}/-
               </td>
             </tr>
 
             <tr>
-              <td className="border p-2 text-left">Form Fee</td>
-              <td className="border p-2 text-right">
+              <td className="border border-gray-400 p-2 text-left text-black">
+                Form Fee
+              </td>
+              <td className="border border-gray-400 p-2 text-right text-black">
                 {getTotal("Form Fee")}/-
               </td>
             </tr>
 
             <tr>
-              <td className="border p-2 text-left">Others</td>
-              <td className="border p-2 text-right">{getTotal("Others")}/-</td>
+              <td className="border border-gray-400 p-2 text-left text-black">
+                Others
+              </td>
+              <td className="border border-gray-400 p-2 text-right text-black">
+                {getTotal("Others")}/-
+              </td>
             </tr>
 
             <tr className="bg-gray-100">
-              <td className="border p-2 text-center font-semibold">
+              <td className="border border-gray-400 p-2 text-center font-semibold text-black">
                 Grand Total
               </td>
-              <td className="border p-2 text-right font-semibold">
+              <td className="border border-gray-400 p-2 text-right font-semibold text-black">
                 {feeSummary.total_amount_paid || "0"}/-
               </td>
             </tr>
@@ -286,17 +301,19 @@ export const ViewFeesDetails = () => {
         </table>
 
         {/* Footer */}
-        <div className="text-sm mt-4">
-          <p>
-            <strong>Paid by:</strong> {feeSummary.payment_mode || "--"}
+        <div className="text-sm mt-4 text-black">
+          <p className="text-black">
+            <strong className="text-black">Paid by:</strong>{" "}
+            {feeSummary.payment_mode || "--"}
           </p>
-          <p>Fees once paid are neither refundable nor transferable.</p>
+          <p className="text-black">
+            Fees once paid are neither refundable nor transferable.
+          </p>
           <p className="text-gray-500 text-xs">
             This is a computer generated receipt. No signature is required.
           </p>
         </div>
       </div>
-
       {/* Action Buttons */}
       <div className="max-w-xl mx-auto flex justify-end gap-3 mb-24 md:mb-20 mt-3">
         <button
