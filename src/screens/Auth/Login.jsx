@@ -5,7 +5,10 @@ import image from "../../assets/auth-hero.png";
 import { AuthContext } from "../../context/AuthContext";
 import { constants } from "../../global/constants";
 import { allRouterLink } from "../../router/AllRouterLinks";
-import { validloginemail, validloginpassword } from "../../Validations/Validations";
+import {
+  validloginemail,
+  validloginpassword,
+} from "../../Validations/Validations";
 
 export const Login = () => {
   const { LoginUser } = useContext(AuthContext);
@@ -13,16 +16,22 @@ export const Login = () => {
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
- 
 
-  const { register, handleSubmit, formState: { errors } } = useForm();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm();
 
   const onSubmit = async (data) => {
     setLoading(true);
     setFormError("");
 
     try {
-      const response = await LoginUser({ email: data.email, password: data.password });
+      const response = await LoginUser({
+        email: data.email,
+        password: data.password,
+      });
       console.log("Login response:", response);
 
       if (response && response["Message"] === "User logged in successfully") {
@@ -33,9 +42,17 @@ export const Login = () => {
         const studentId = response.studentId || response.student_id || "";
         const guardianId = response.guardianId || response.guardian_id || "";
         const teacherId = response.teacherId || response.teacher_id || "";
-        const officeStaffId = response.officeStaffId || response.office_staff_id || "";
+        const officeStaffId =
+          response.officeStaffId || response.office_staff_id || "";
 
-        console.log("Role:", role, "TeacherId:", teacherId, "StudentId:", studentId);
+        console.log(
+          "Role:",
+          role,
+          "TeacherId:",
+          teacherId,
+          "StudentId:",
+          studentId,
+        );
 
         // Store in localStorage
         localStorage.setItem("access", response.access);
@@ -76,24 +93,31 @@ export const Login = () => {
     } catch (err) {
       setFormError(
         err.response?.data?.Message ||
-        err.response?.data?.message ||
-        "Something went wrong. Please try again later."
+          err.response?.data?.message ||
+          "Something went wrong. Please try again later.",
       );
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <>
       <style>{constants.hideEdgeRevealStyle}</style>
       <div className="min-h-screen flex flex-col md:flex-row">
         <div className="hidden md:block md:w-2/3 formBgColor">
-          <img src={image} alt="Authentication" className="w-full h-full object-cover" />
+          <img
+            src={image}
+            alt="Authentication"
+            className="w-full h-full object-cover"
+          />
         </div>
         <div className="w-full md:w-1/2 lg:w-1/3 flex items-center justify-center p-4">
-          <form className="w-full max-w-md space-y-4" onSubmit={handleSubmit(onSubmit)}>
+          <form
+            className="w-full max-w-md space-y-4"
+            onSubmit={handleSubmit(onSubmit)}
+          >
             <h1 className="text-3xl font-bold text-center mb-6">Login</h1>
             {/* Email */}
             <div className="form-control w-full">
@@ -107,9 +131,15 @@ export const Login = () => {
                 placeholder="example@gmail.com"
                 className="input input-bordered w-full focus:outline-none"
                 autoComplete="on"
-                {...register("email", { validate: (val) => validloginemail(val) || true })}
+                {...register("email", {
+                  validate: (val) => validloginemail(val) || true,
+                })}
               />
-              {errors.email && <span className="text-red-500 text-sm mt-1">{errors.email.message}</span>}
+              {errors.email && (
+                <span className="text-red-500 text-sm mt-1">
+                  {errors.email.message}
+                </span>
+              )}
             </div>
 
             {/* Password */}
@@ -124,29 +154,53 @@ export const Login = () => {
                 placeholder="Enter your password"
                 className="input w-full pr-10 focus:outline-none"
                 autoComplete="on"
-                {...register("password", { validate: (val) => validloginpassword(val) || true })}
+                {...register("password", {
+                  validate: (val) => validloginpassword(val) || true,
+                })}
               />
               <button
                 type="button"
                 className="passwordEyes text-gray-500"
                 onClick={() => setShowPassword(!showPassword)}
               >
-                <i className={`fa-solid ${showPassword ? "fa-eye" : "fa-eye-slash"}`}></i>
+                <i
+                  className={`fa-solid ${showPassword ? "fa-eye" : "fa-eye-slash"}`}
+                ></i>
               </button>
-              {errors.password && <span className="text-red-500 text-sm mt-1">{errors.password.message}</span>}
+              {errors.password && (
+                <span className="text-red-500 text-sm mt-1">
+                  {errors.password.message}
+                </span>
+              )}
             </div>
 
-            {formError && <div className="text-red-500 text-center font-medium">{formError}</div>}
+            {formError && (
+              <div className="text-red-500 text-center font-medium">
+                {formError}
+              </div>
+            )}
 
             {/* Submit Button */}
             <div className="form-control w-full mt-6">
               <button type="submit" className="btn bgTheme btn-primary w-full">
-                {loading ? <i className="fa-solid fa-spinner fa-spin mr-2"></i> : <i className="fa-solid fa-right-to-bracket mr-2"></i>}
+                {loading ? (
+                  <i className="fa-solid fa-spinner fa-spin mr-2"></i>
+                ) : (
+                  <i className="fa-solid fa-right-to-bracket mr-2"></i>
+                )}
                 {loading ? "" : "Login"}
               </button>
             </div>
 
-            {/* Forgot Password */}
+            <div className="text-center mt-8 text-xs text-gray-400">
+              By continuing, you agree to our{" "}
+              <Link
+                to={allRouterLink.privacyPolicy}
+                className="underline hover:text-gray-600"
+              >
+                Privacy Policy
+              </Link>
+            </div>
             <div className="text-center mt-4">
               <Link
                 to={`${allRouterLink.forgotPassword}`}

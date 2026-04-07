@@ -638,7 +638,7 @@ export const routes = [
   {
     path: allRouterLink.privacyPolicy,
     element: <PrivacyPolicy />,
-    protected: true,
+    protected: false,
     allowedRoles: [constants.roles.director],
   },
   {
