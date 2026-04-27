@@ -32,7 +32,6 @@ export const Login = () => {
         email: data.email,
         password: data.password,
       });
-      console.log("Login response:", response);
 
       if (response && response["Message"] === "User logged in successfully") {
         const role = response.Roles?.[0] || "";
@@ -44,15 +43,6 @@ export const Login = () => {
         const teacherId = response.teacherId || response.teacher_id || "";
         const officeStaffId =
           response.officeStaffId || response.office_staff_id || "";
-
-        console.log(
-          "Role:",
-          role,
-          "TeacherId:",
-          teacherId,
-          "StudentId:",
-          studentId,
-        );
 
         // Store in localStorage
         localStorage.setItem("access", response.access);
@@ -96,7 +86,6 @@ export const Login = () => {
           err.response?.data?.message ||
           "Something went wrong. Please try again later.",
       );
-      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -118,7 +107,24 @@ export const Login = () => {
             className="w-full max-w-md space-y-4"
             onSubmit={handleSubmit(onSubmit)}
           >
-            <h1 className="text-3xl font-bold text-center mb-6">Login</h1>
+            {/* School Header */}
+            <div className="text-center mb-8 pb-4 border-b border-gray-200">
+              <div className="flex justify-center items-center gap-3 mb-2">
+                {/* Optional: Add a school icon/logo placeholder */}
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-md">
+                  <i className="fa-solid fa-school text-white text-xl"></i>
+                </div>
+                <div className="text-left">
+                  <h2 className="text-lg font-bold">
+                    New Progressive
+                  </h2>
+                  <h2 className="text-lg font-bold">
+                    Education Public School
+                  </h2>
+                </div>
+              </div>
+            </div>
+            <h1 className="text-3xl font-bold text-center mb-6">Login</h1>{" "}
             {/* Email */}
             <div className="form-control w-full">
               <label className="label">
@@ -141,7 +147,6 @@ export const Login = () => {
                 </span>
               )}
             </div>
-
             {/* Password */}
             <div className="form-control w-full relative">
               <label className="label">
@@ -173,13 +178,11 @@ export const Login = () => {
                 </span>
               )}
             </div>
-
             {formError && (
               <div className="text-red-500 text-center font-medium">
                 {formError}
               </div>
             )}
-
             {/* Submit Button */}
             <div className="form-control w-full mt-6">
               <button type="submit" className="btn bgTheme btn-primary w-full">
@@ -191,7 +194,6 @@ export const Login = () => {
                 {loading ? "" : "Login"}
               </button>
             </div>
-
             <div className="text-center mt-8 text-xs text-gray-400">
               By continuing, you agree to our{" "}
               <Link

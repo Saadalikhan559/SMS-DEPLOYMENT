@@ -1,7 +1,7 @@
 .nexus-logo {
   font-size: 2rem;
   font-weight: 700;
-  font-family: 'cursive';
+  font-family: "cursive";
   background: linear-gradient(135deg, #6e00ff, #95c2d3);
   -webkit-background-clip: text;
   background-clip: text;
@@ -9,7 +9,6 @@
   position: relative;
   cursor: pointer;
 }
-
 
 .formBgColor {
   background-color: #ffe9d1;
@@ -24,21 +23,20 @@
 }
 
 .bgTheme {
-  background-color: #5E35B1 !important;
+  background-color: #5e35b1 !important;
 }
 
 .bgTheme.btn:hover {
   cursor: pointer;
   background: lavender !important;
-  border-color: #5E35B1 !important;
-  color: #5E35B1 !important;
+  border-color: #5e35b1 !important;
+  color: #5e35b1 !important;
 }
-
 
 .btnThemeOutline {
   background-color: rgb(249, 249, 255) !important;
-  border: 1px solid #5E35B1 !important;
-  color: #5E35B1 !important;
+  border: 1px solid #5e35b1 !important;
+  color: #5e35b1 !important;
   cursor: pointer;
 }
 
@@ -46,29 +44,29 @@
   background-color: rgba(94, 53, 177, 0.08) !important;
 }
 
-
 .textTheme {
-  color: #5E35B1;
+  color: #5e35b1 !important;
 }
 
+
 .borderTheme {
-  border: 1px solid #5E35B1;
+  border: 1px solid #5e35b1;
 }
 
 .borderTheme-b {
-  border-bottom: 1px solid #5E35B1;
+  border-bottom: 1px solid #5e35b1;
 }
 
 .borderTheme-t {
-  border-top: 1px solid #5E35B1;
+  border-top: 1px solid #5e35b1;
 }
 
 .borderTheme-r {
-  border-right: 1px solid #5E35B1;
+  border-right: 1px solid #5e35b1;
 }
 
 .borderTheme-l {
-  border-left: 1px solid #5E35B1;
+  border-left: 1px solid #5e35b1;
 }
 
 .schoolBoyAnimation {
@@ -76,25 +74,24 @@
   width: 150px;
 }
 
-
 .btn-theme {
-  border: 1px solid #5E35B1;
-  color: #5E35B1;
+  border: 1px solid #5e35b1;
+  color: #5e35b1;
   background: transparent;
   transition: all 0.3s ease;
 }
 
 .btn-theme:hover {
-  background: #5E35B1;
+  background: #5e35b1;
   color: white;
 }
 .no-scrollbar {
-  -ms-overflow-style: none;  
-  scrollbar-width: none;     
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .no-scrollbar::-webkit-scrollbar {
-  display: none;            
+  display: none;
 }
 @media (prefers-color-scheme: dark) {
   .react-calendar {
@@ -138,14 +135,10 @@
   }
 }
 
-
-
-
-.apexcharts-canvas .apexcharts-svg .apexcharts-yaxis-texts-g .apexcharts-text, .apexcharts-canvas .apexcharts-svg .apexcharts-xaxis-texts-g .apexcharts-text {
-  fill: #5E35B1 !important;
+.apexcharts-canvas .apexcharts-svg .apexcharts-yaxis-texts-g .apexcharts-text,
+.apexcharts-canvas .apexcharts-svg .apexcharts-xaxis-texts-g .apexcharts-text {
+  fill: #5e35b1 !important;
 }
-
-
 
 .custom-select .arrow {
   position: absolute;
@@ -157,13 +150,10 @@
   color: #333;
 }
 
-
-
-.logoImg{
+.logoImg {
   height: 50px;
   width: 50px;
 }
-
 
 /* Receipt Specific Styles */
 .receipt-container {
@@ -178,7 +168,7 @@
 }
 
 .receipt-header-title {
-  color: #5E35B1; /* Matching your theme */
+  color: #5e35b1; /* Matching your theme */
   font-size: 1.25rem;
   font-weight: 700;
   text-transform: uppercase;
