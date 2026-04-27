@@ -225,6 +225,29 @@ export const fetchStudentYearLevelByClass = async (year_level_id) => {
     throw err;
   }
 };
+export const fetchStudentSession = async (year__year_name) => {
+  try {
+    const response = await axios.get(
+      `${BASE_URL}/s/studentyearlevels/?year__year_name=${year__year_name}`
+    );
+    return response.data;
+  } catch (err) {
+    console.error("Failed to fetch students:", err);
+    throw err;
+  }
+};
+
+export const fetchStudentYearLevelByClassAndSession = async (year__year_name, yearLevelId) => {
+  try {
+    const response = await axios.get(
+      `${BASE_URL}/s/studentyearlevels/?year__year_name=${year__year_name}&level__id=${yearLevelId}`
+    );
+    return response.data;
+  } catch (err) {
+    console.error("Failed to fetch students:", err);
+    throw err;
+  }
+};
 
 export const fetchTeachers = async (id) => {
   try {
