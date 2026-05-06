@@ -1,7 +1,7 @@
 export const constants = {
   isOnline: true,
   isOffline: true,
-  // baseUrl: "https://api.newprogressive.in", //deployed for school newprogressive PRODUCTION
+  baseUrl: "https://api.newprogressive.in", //deployed for school newprogressive PRODUCTION
   // baseUrl: "https://smsproject1.pythonanywhere.com/", //deployed for testing
   // baseUrl: "https://smsproject.pythonanywhere.com/", //deployed for school NPEPS deployed
   //baseUrl: "https://newprogressive.pythonanywhere.com/", //deployed for school newprogressive testing
@@ -11,7 +11,7 @@ export const constants = {
   //  baseUrl: "https://9gqxjbjg-8000.inc1.devtunnels.ms/", //tahur
   // baseUrl:"https://958cp4w5-8000.inc1.devtunnels.ms/", //saba
   // baseUrl: "https://94f38xkg-8000.inc1.devtunnels.ms", //naaz
-  baseUrl: "https://94f38xkg-7000.inc1.devtunnels.ms/", //naaz
+  // baseUrl: "https://94f38xkg-7000.inc1.devtunnels.ms/", //naaz
   //  baseUrl:"https://187gwsw1-8000.inc1.devtunnels.ms/", //farha
 
   hideEdgeRevealStyle: `
