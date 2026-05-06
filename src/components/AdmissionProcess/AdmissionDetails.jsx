@@ -1,12 +1,17 @@
 import React, { useContext, useEffect, useState, useRef } from "react";
-import { fetchAdmissionDetails, fetchYearLevels } from "../../services/api/Api";
+import {
+  fetchAdmissionDetails,
+  fetchYearLevels,
+  deactivateStudents,
+  fetchInactiveStudents,
+  reactivateStudents,
+} from "../../services/api/Api";
 import { Link } from "react-router-dom";
 import { allRouterLink } from "../../router/AllRouterLinks";
 import { AuthContext } from "../../context/AuthContext";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-
 
 export const AdmissionDetails = () => {
   const { axiosInstance } = useContext(AuthContext);
@@ -19,6 +24,21 @@ export const AdmissionDetails = () => {
   const [error, setError] = useState(false);
   const [showDownloadOptions, setShowDownloadOptions] = useState(false);
   const dropdownRef = useRef(null);
+  const [studentData, setStudentData] = useState([]);
+
+  // Delete States
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Result Modal
+  const [resultModal, setResultModal] = useState(null);
+
+  // Inactive Students States
+  const [showInactiveModal, setShowInactiveModal] = useState(false);
+  const [inactiveStudents, setInactiveStudents] = useState([]);
+  const [inactiveLoading, setInactiveLoading] = useState(false);
+  const [reactivatingId, setReactivatingId] = useState(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -26,26 +46,35 @@ export const AdmissionDetails = () => {
         setShowDownloadOptions(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
-
-
-  const [studentData, setStudentData] = useState([]);
+  const normalizeStudents = (data) => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    if (Array.isArray(data?.data)) return data.data;
+    if (typeof data === "object") {
+      if ("student_id" in data || "student_name" in data) return [data];
+      const vals = Object.values(data).filter(
+        (v) =>
+          v &&
+          typeof v === "object" &&
+          ("student_id" in v || "student_name" in v)
+      );
+      if (vals.length) return vals;
+    }
+    return [];
+  };
 
   const getAdmissionDetails = async () => {
     try {
-      // const data = await fetchAdmissionDetails();
-      // setDetails(data);
       const data = normalizeStudents(await fetchAdmissionDetails());
       setDetails(data);
-
       setLoading(false);
-
       const stu = await axiosInstance.get("s/students/student_details/");
       setStudentData(normalizeStudents(stu.data));
     } catch (error) {
@@ -55,26 +84,6 @@ export const AdmissionDetails = () => {
     }
   };
 
-  const normalizeStudents = (data) => {
-    if (!data) return [];
-    if (Array.isArray(data)) return data;
-    if (Array.isArray(data?.results)) return data.results;
-    if (Array.isArray(data?.data)) return data.data;
-    if (typeof data === "object") {
-      // single object → wrap
-      if ("student_id" in data || "student_name" in data) return [data];
-      // object keyed by ids → take values that look like students
-      const vals = Object.values(data).filter(
-        v => v && typeof v === "object" && ("student_id" in v || "student_name" in v)
-      );
-      if (vals.length) return vals;
-    }
-    return [];
-  };
-
-  useEffect(() => {
-    getAdmissionDetails();
-  }, []);
   const getYearLevels = async () => {
     try {
       const data = await fetchYearLevels();
@@ -85,16 +94,110 @@ export const AdmissionDetails = () => {
   };
 
   useEffect(() => {
+    getAdmissionDetails();
+  }, []);
+
+  useEffect(() => {
     getYearLevels();
   }, []);
 
+  // ════════════════════════════════════════
+  // DELETE FUNCTIONS
+  // ════════════════════════════════════════
+  const handleDeleteClick = (detail) => {
+    setStudentToDelete(detail);
+    setShowDeleteModal(true);
+  };
 
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setStudentToDelete(null);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!studentToDelete) return;
+    setDeleteLoading(true);
+    try {
+      const studentId =
+        studentToDelete.student_input?.id ??
+        studentToDelete.student_id ??
+        studentToDelete.id;
+
+      await deactivateStudents([studentId]);
+      await getAdmissionDetails();
+
+      setShowDeleteModal(false);
+      setStudentToDelete(null);
+
+      setResultModal({
+        type: "success",
+        message: "Student has been deactivated successfully.",
+      });
+    } catch (error) {
+      setShowDeleteModal(false);
+      setStudentToDelete(null);
+      setResultModal({
+        type: "error",
+        message: "Failed to deactivate student. Please try again.",
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // ════════════════════════════════════════
+  // INACTIVE & REACTIVATE FUNCTIONS
+  // ════════════════════════════════════════
+  const getInactiveStudents = async () => {
+    setInactiveLoading(true);
+    try {
+      const data = await fetchInactiveStudents();
+      setInactiveStudents(data);
+    } catch (err) {
+      console.error("Failed to fetch inactive students:", err);
+      setInactiveStudents([]);
+    } finally {
+      setInactiveLoading(false);
+    }
+  };
+
+  const handleInactiveClick = () => {
+    setShowInactiveModal(true);
+    getInactiveStudents();
+  };
+
+  const handleReactivate = async (studentId) => {
+    setReactivatingId(studentId);
+    try {
+      await reactivateStudents([studentId]);
+
+      setInactiveStudents((prev) =>
+        prev.filter((s) => (s.id ?? s.student_id) !== studentId)
+      );
+
+      await getAdmissionDetails();
+
+      setResultModal({
+        type: "success",
+        message: "Student has been reactivated successfully.",
+      });
+    } catch (err) {
+      console.error("Reactivation failed:", err);
+      setResultModal({
+        type: "error",
+        message: "Failed to reactivate student. Please try again.",
+      });
+    } finally {
+      setReactivatingId(null);
+    }
+  };
+
+  // ════════════════════════════════════════
+  // DOWNLOAD FUNCTIONS
+  // ════════════════════════════════════════
   const handleDownloadExcel = (input = []) => {
     const data = normalizeStudents(input);
-    if (!data.length) {
-      return;
-    }
+    if (!data.length) return;
 
     const formattedData = data.map((s) => ({
       ID: s.student_id ?? s.id ?? "",
@@ -128,58 +231,70 @@ export const AdmissionDetails = () => {
     const worksheet = XLSX.utils.json_to_sheet(formattedData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
-
     XLSX.writeFile(workbook, "Student_Details_Report.xlsx");
   };
 
-
   const handleDownloadStudentDataPDF = (input = []) => {
     const data = normalizeStudents(input);
-    if (!data.length) {
-      return;
-    }
+    if (!data.length) return;
 
-
-    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a3" });
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a3",
+    });
 
     const margin = 10;
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
 
-    // Header
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text("Student Details Report", margin, 12);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth - margin, 12, { align: "right" });
+    doc.text(
+      `Generated: ${new Date().toLocaleString()}`,
+      pageWidth - margin,
+      12,
+      { align: "right" }
+    );
 
     const fmtDate = (d) => {
       if (!d) return "";
       const date = new Date(d);
       return isNaN(date)
         ? String(d)
-        : date.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+        : date.toLocaleDateString(undefined, {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          });
     };
     const fmtNumberIN = (n) => {
-      if (n === null || n === undefined || n === "" || n === "N/A") return "N/A";
+      if (n === null || n === undefined || n === "" || n === "N/A")
+        return "N/A";
       const num = Number(n);
       return Number.isNaN(num)
         ? String(n)
-        : new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(num);
+        : new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(
+            num
+          );
     };
     const safe = (v) => (v === null || v === undefined ? "" : String(v));
 
-    // Build one row per student. Some columns are multi-line to save width.
     const body = data.map((s) => {
       const id = safe(s.student_id ?? s.id);
       const scholar = safe(s["scholar number"] ?? "");
       const enroll = safe(s.enrollment_no ?? "");
-      const schEnroll = `S:${scholar}${scholar && enroll ? "  " : ""}E:${enroll}`.trim();
+      const schEnroll =
+        `S:${scholar}${scholar && enroll ? "  " : ""}E:${enroll}`.trim();
       const name = safe(s.student_name);
       const className = safe(s.class);
       const age = s.age ?? "";
-      const gender = s.gender ? s.gender[0].toUpperCase() + s.gender.slice(1) : "";
+      const gender = s.gender
+        ? s.gender[0].toUpperCase() + s.gender.slice(1)
+        : "";
       const dob = fmtDate(s.date_of_birth);
       const category = safe(s.category);
       const religion = safe(s.religion);
@@ -201,12 +316,15 @@ export const AdmissionDetails = () => {
       const bankAcc = safe(s["bank details"]?.account_no ?? "N/A");
       const ifsc = safe(s["bank details"]?.ifsc_code ?? "N/A");
       const bank = `A/C:${bankAcc}\nIFSC:${ifsc}`;
-      const annualIncome = fmtNumberIN(s["annual income"] ?? s.annual_income);
+      const annualIncome = fmtNumberIN(
+        s["annual income"] ?? s.annual_income
+      );
       const year = safe(s["school year"] ?? "");
 
       return [
-        id, schEnroll, name, className, age, gender, dob, catRel, siblings, active,
-        rte, phone, email, parents, guardian, address, aadhaar, bank, annualIncome, year,
+        id, schEnroll, name, className, age, gender, dob, catRel, siblings,
+        active, rte, phone, email, parents, guardian, address, aadhaar, bank,
+        annualIncome, year,
       ];
     });
 
@@ -215,10 +333,13 @@ export const AdmissionDetails = () => {
       theme: "grid",
       showHead: "everyPage",
       rowPageBreak: "avoid",
-      head: [[
-        "ID", "Sch/En", "Name", "Class", "Age", "Gender", "DOB", "Cat/Rel", "Siblings", "Active",
-        "RTE", "Phone", "Email", "Parents", "Guardian", "Address", "Aadhaar", "Bank", "Income", "Year",
-      ]],
+      head: [
+        [
+          "ID", "Sch/En", "Name", "Class", "Age", "Gender", "DOB", "Cat/Rel",
+          "Siblings", "Active", "RTE", "Phone", "Email", "Parents", "Guardian",
+          "Address", "Aadhaar", "Bank", "Income", "Year",
+        ],
+      ],
       body,
       margin: { top: 15, left: margin, right: margin },
       styles: {
@@ -234,39 +355,46 @@ export const AdmissionDetails = () => {
       },
       alternateRowStyles: { fillColor: [248, 250, 252] },
       columnStyles: {
-        0: { cellWidth: 10, halign: "center" }, // ID
-        1: { cellWidth: 24 },                   // Sch/En
-        2: { cellWidth: 30 },                   // Name
-        3: { cellWidth: 14 },                   // Class
-        4: { cellWidth: 8, halign: "center" },  // Age
-        5: { cellWidth: 12 },                   // Gender
-        6: { cellWidth: 16 },                   // DOB
-        7: { cellWidth: 20 },                   // Cat/Rel
-        8: { cellWidth: 20, halign: "center" }, // Siblings
-        9: { cellWidth: 10, halign: "center" }, // Active
-        10: { cellWidth: 16 },                  // RTE
-        11: { cellWidth: 20 },                  // Phone
-        12: { cellWidth: 24 },                  // Email
-        13: { cellWidth: 22 },                  // Parents
-        14: { cellWidth: 22 },                  // Guardian
-        15: { cellWidth: 50 },                  // Address
-        16: { cellWidth: 22 },                  // Aadhaar
-        17: { cellWidth: 26 },                  // Bank (A/C + IFSC)
-        18: { cellWidth: 18, halign: "right" }, // Income
-        19: { cellWidth: 14 },                  // Year
+        0: { cellWidth: 10, halign: "center" },
+        1: { cellWidth: 24 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 14 },
+        4: { cellWidth: 8, halign: "center" },
+        5: { cellWidth: 12 },
+        6: { cellWidth: 16 },
+        7: { cellWidth: 20 },
+        8: { cellWidth: 20, halign: "center" },
+        9: { cellWidth: 10, halign: "center" },
+        10: { cellWidth: 16 },
+        11: { cellWidth: 20 },
+        12: { cellWidth: 24 },
+        13: { cellWidth: 22 },
+        14: { cellWidth: 22 },
+        15: { cellWidth: 50 },
+        16: { cellWidth: 22 },
+        17: { cellWidth: 26 },
+        18: { cellWidth: 18, halign: "right" },
+        19: { cellWidth: 14 },
       },
       didDrawPage: (data) => {
         const pageCount = doc.internal.getNumberOfPages();
         doc.setFontSize(8);
         doc.setTextColor(100);
-        doc.text(`Page ${data.pageNumber} of ${pageCount}`, pageWidth - margin, pageHeight - 6, { align: "right" });
+        doc.text(
+          `Page ${data.pageNumber} of ${pageCount}`,
+          pageWidth - margin,
+          pageHeight - 6,
+          { align: "right" }
+        );
       },
     });
 
     doc.save("Student_Details_Report.pdf");
   };
 
-
+  // ════════════════════════════════════════
+  // ERROR STATE
+  // ════════════════════════════════════════
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center p-6">
@@ -277,6 +405,10 @@ export const AdmissionDetails = () => {
       </div>
     );
   }
+
+  // ════════════════════════════════════════
+  // LOADING STATE
+  // ════════════════════════════════════════
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
@@ -289,53 +421,227 @@ export const AdmissionDetails = () => {
       </div>
     );
   }
+
+  // ════════════════════════════════════════
+  // NO DATA STATE
+  // ════════════════════════════════════════
   if (!details) {
     return <div className="p-4 text-center">No admission records found</div>;
   }
 
+  // ════════════════════════════════════════
+  // FILTERING & SORTING
+  // ════════════════════════════════════════
   const filterData = details.filter((detail) => {
-
     const matchesClass = (detail.year_level ?? "")
       .toLowerCase()
       .includes(selectedClass.toLowerCase());
-
-
     const matchesDate = selectedDate
       ? detail.admission_date === selectedDate
       : true;
-
     return matchesClass && matchesDate;
   });
-
 
   const filterBysearch = filterData.filter((detail) => {
     const search = searchInput.toLowerCase();
     const student = detail.student_input || {};
-    const studentName = `${student.first_name ?? ""} ${student.last_name ?? ""}`.toLowerCase();
-    return studentName.startsWith(search) ;
+    const studentName =
+      `${student.first_name ?? ""} ${student.last_name ?? ""}`.toLowerCase();
+    return studentName.startsWith(search);
   });
 
   const sortedData = [...filterBysearch].sort((a, b) => {
-    const nameA = `${a.student_input?.first_name ?? ""} ${a.student_input?.last_name ?? ""}`.toLowerCase();
-    const nameB = `${b.student_input?.first_name ?? ""} ${b.student_input?.last_name ?? ""}`.toLowerCase();
+    const nameA =
+      `${a.student_input?.first_name ?? ""} ${a.student_input?.last_name ?? ""}`.toLowerCase();
+    const nameB =
+      `${b.student_input?.first_name ?? ""} ${b.student_input?.last_name ?? ""}`.toLowerCase();
     return nameA.localeCompare(nameB);
   });
 
-
+  // ════════════════════════════════════════
+  // MAIN RETURN
+  // ════════════════════════════════════════
   return (
     <div className="p-6 bg-gray-100 dark:bg-gray-900 min-h-screen mb-24 md:mb-10">
+      {/* DELETE CONFIRM MODAL */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-sm shadow-md">
+            <h2 className="text-lg font-semibold mb-3 dark:text-gray-100">
+              Deactivate Student
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Are you sure you want to deactivate this student?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={handleCancelDelete}
+                disabled={deleteLoading}
+                className="btn btnThemeOutline items-center"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={deleteLoading}
+                className="btn bgTheme text-white flex items-center"
+              >
+                {deleteLoading ? "Deactivating..." : "Deactivate"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RESULT MODAL */}
+      {resultModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-sm shadow-md">
+            <div className="flex justify-center mb-4">
+              {resultModal.type === "success" ? (
+                <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
+                  <i className="fa-solid fa-circle-check text-green-500 text-3xl"></i>
+                </div>
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center">
+                  <i className="fa-solid fa-circle-xmark text-red-500 text-3xl"></i>
+                </div>
+              )}
+            </div>
+            <h2
+              className={`text-lg font-semibold text-center mb-2 ${
+                resultModal.type === "success"
+                  ? "text-green-700"
+                  : "text-red-700"
+              }`}
+            >
+              {resultModal.type === "success" ? "Success!" : "Failed!"}
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 text-center text-sm mb-5">
+              {resultModal.message}
+            </p>
+            <div className="flex justify-center">
+              <button
+                onClick={() => setResultModal(null)}
+                className={`btn text-white px-8 ${
+                  resultModal.type === "success"
+                    ? "bg-green-500 hover:bg-green-600"
+                    : "bg-red-500 hover:bg-red-600"
+                }`}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* INACTIVE STUDENTS MODAL */}
+      {showInactiveModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg max-h-[80vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                <i className="fa-solid fa-user-slash text-red-500"></i>
+                Inactive Students
+              </h2>
+              <button
+                onClick={() => setShowInactiveModal(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              >
+                <i className="fa-solid fa-xmark text-gray-500 dark:text-gray-300"></i>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {inactiveLoading ? (
+                <div className="flex flex-col items-center justify-center py-10">
+                  <div className="flex space-x-2">
+                    <div className="w-2.5 h-2.5 bgTheme rounded-full animate-bounce"></div>
+                    <div className="w-2.5 h-2.5 bgTheme rounded-full animate-bounce [animation-delay:-0.2s]"></div>
+                    <div className="w-2.5 h-2.5 bgTheme rounded-full animate-bounce [animation-delay:-0.4s]"></div>
+                  </div>
+                  <p className="mt-2 text-gray-500 text-sm">Loading...</p>
+                </div>
+              ) : inactiveStudents.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10">
+                  <i className="fa-solid fa-face-smile text-4xl text-green-400 mb-3"></i>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">
+                    No inactive students found.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+           {inactiveStudents.map((student) => {
+  const id = student.id;
+  const name = student.name || "Unknown";
+
+  return (
+    <div
+      key={id}
+      className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg px-4 py-3 border border-gray-200 dark:border-gray-600"
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+          <i className="fa-solid fa-user text-red-500 text-sm"></i>
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
+            {name}
+          </p>
+        </div>
+      </div>
+
+      <button
+        onClick={() => handleReactivate(id)}
+        disabled={reactivatingId === id}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition flex-shrink-0 ${
+          reactivatingId === id
+            ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+            : "bg-green-50 text-green-700 border border-green-300 hover:bg-green-100"
+        }`}
+      >
+        {reactivatingId === id ? (
+          <>
+            <i className="fa-solid fa-spinner animate-spin"></i>
+            Wait...
+          </>
+        ) : (
+          <>
+            <i className="fa-solid fa-rotate-left"></i>
+            Reactivate
+          </>
+        )}
+      </button>
+    </div>
+  );
+})}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-xs text-gray-400 text-center">
+                {inactiveStudents.length} inactive student(s)
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
         <div className="mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 text-center mb-4  border-gray-200 dark:border-gray-700">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 text-center mb-4 border-gray-200 dark:border-gray-700">
             <i className="fa-solid fa-clipboard-list w-5"></i> Student Details
           </h1>
         </div>
         <div className="w-full px-5">
           <div className="flex flex-wrap justify-between items-end gap-4 mb-6 w-full border-b border-gray-300 dark:border-gray-700 pb-4">
-
             {/* Left Side: Filters */}
             <div className="flex flex-wrap items-end gap-4 w-full sm:w-auto">
-              {/* Class Filter */}
               <div className="flex flex-col w-full sm:w-auto">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Search By Class:
@@ -354,7 +660,6 @@ export const AdmissionDetails = () => {
                 </select>
               </div>
 
-              {/* Date Filter */}
               <div className="flex flex-col w-full sm:w-auto">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Search By Date:
@@ -367,8 +672,6 @@ export const AdmissionDetails = () => {
                 />
               </div>
 
-
-              {/* Reset Button */}
               <div className="mt-1 w-full sm:w-auto">
                 <button
                   onClick={() => {
@@ -381,12 +684,17 @@ export const AdmissionDetails = () => {
                   Reset Filters
                 </button>
               </div>
-              <div className="mt-1 w-full sm:w-auto relative group" ref={dropdownRef}>
+
+              <div
+                className="mt-1 w-full sm:w-auto relative group"
+                ref={dropdownRef}
+              >
                 <button
                   className="btn bgTheme text-white flex items-center"
-                  onClick={() => setShowDownloadOptions(prev => !prev)}
+                  onClick={() => setShowDownloadOptions((prev) => !prev)}
                 >
-                  <i className="fa-solid fa-file-arrow-down mr-2"></i> Download All Student Info
+                  <i className="fa-solid fa-file-arrow-down mr-2"></i> Download
+                  All Student Info
                   <i className="fa-solid fa-caret-down ml-2"></i>
                 </button>
 
@@ -415,7 +723,7 @@ export const AdmissionDetails = () => {
               </div>
             </div>
 
-            {/* Right Side: Search */}
+            {/* Right Side: Search + Inactive Icon */}
             <div className="flex items-end gap-2 w-full sm:w-auto justify-end">
               <div className="flex flex-col w-full sm:w-auto">
                 <input
@@ -426,11 +734,24 @@ export const AdmissionDetails = () => {
                   onChange={(e) => setSearchInput(e.target.value.trimStart())}
                 />
               </div>
+
+              {/* Inactive Students Icon */}
+              <button
+                onClick={handleInactiveClick}
+                title="View Inactive Students"
+                className="w-10 h-10 flex items-center justify-center rounded-lg border border-red-300 bg-red-50 hover:bg-red-100 text-red-600 transition flex-shrink-0"
+              >
+                <i className="fa-solid fa-user-slash text-sm"></i>
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Table */}
         {filterData.length === 0 ? (
-          <p className="text-gray-600 dark:text-gray-400">No admission records found.</p>
+          <p className="text-gray-600 dark:text-gray-400">
+            No admission records found.
+          </p>
         ) : (
           <div className="overflow-x-auto no-scrollbar max-h-[70vh] rounded-lg">
             <div className="inline-block min-w-full align-middle rounded-lg">
@@ -441,95 +762,125 @@ export const AdmissionDetails = () => {
                       <table className="min-w-full divide-gray-300 dark:divide-gray-700">
                         <thead className="bgTheme text-white z-2 sticky top-0">
                           <tr>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Student Name</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Father Name</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Mother Name</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Date of Birth</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Gender</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Class</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">RTE</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Admission Date</th>
-                            <th className="px-8 py-3 text-left text-sm font-semibold text-nowrap">Status</th>
-                            <th className="px-10 py-3 text-left text-sm font-semibold text-nowrap">Actions</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">
+                              Student Name
+                            </th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">
+                              Father Name
+                            </th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">
+                              Mother Name
+                            </th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">
+                              Date of Birth
+                            </th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">
+                              Gender
+                            </th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">
+                              Class
+                            </th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">
+                              RTE
+                            </th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">
+                              Admission Date
+                            </th>
+                            <th className="px-8 py-3 text-left text-sm font-semibold text-nowrap">
+                              Status
+                            </th>
+                            <th className="px-10 py-3 text-left text-sm font-semibold text-nowrap">
+                              Actions
+                            </th>
                           </tr>
                         </thead>
 
                         <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
                           {sortedData.length > 0 ? (
                             sortedData.map((detail) => (
-                              <tr key={detail.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                                {/* Student Name */}
+                              <tr
+                                key={detail.id}
+                                className="hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                              >
                                 <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
-                                  {detail.student_input?.first_name ?? ""} {detail.student_input?.last_name ?? ""}
+                                  {detail.student_input?.first_name ?? ""}{" "}
+                                  {detail.student_input?.last_name ?? ""}
                                 </td>
                                 <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
                                   {detail.student_input?.father_name ?? ""}
                                 </td>
                                 <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
-                                  {detail.student_input?.mother_name ?? ""} 
+                                  {detail.student_input?.mother_name ?? ""}
                                 </td>
-
-                                {/* Date of Birth */}
                                 <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-300">
                                   {detail.student_input?.date_of_birth ?? ""}
                                 </td>
-
-                                {/* Gender */}
                                 <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-300">
                                   {detail.student_input?.gender ?? ""}
                                 </td>
-
-                                {/* Class */}
                                 <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-300">
                                   {detail.year_level ?? ""}
                                 </td>
-
-                                {/* RTE */}
                                 <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-300">
                                   {detail.is_rte ? "Yes" : "No"}
                                 </td>
-
-                                {/* Admission Date */}
                                 <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-300">
                                   {detail.admission_date
-                                    ? new Date(detail.admission_date).toLocaleDateString("en-GB").replaceAll("/", "-")
+                                    ? new Date(detail.admission_date)
+                                        .toLocaleDateString("en-GB")
+                                        .replaceAll("/", "-")
                                     : ""}
                                 </td>
-
-                                {/* Status */}
                                 <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-300">
                                   <span
-                                    className={`inline-flex items-center px-4 py-1 rounded-full text-xs font-medium ${detail.student_input?.is_active
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-red-100 text-red-800"
-                                      }`}
+                                    className={`inline-flex items-center px-4 py-1 rounded-full text-xs font-medium ${
+                                      detail.student_input?.is_active
+                                        ? "bg-green-100 text-green-800"
+                                        : "bg-red-100 text-red-800"
+                                    }`}
                                   >
-                                    {detail.student_input?.is_active ? "Active" : "InActive"}
+                                    {detail.student_input?.is_active
+                                      ? "Active"
+                                      : "InActive"}
                                   </span>
                                 </td>
 
-                                {/* Actions */}
                                 <td className="whitespace-nowrap px-4 py-3 text-sm">
                                   <div className="flex space-x-2">
                                     <Link
-                                      to={allRouterLink.editAddmisionDetails.replace(":id", detail.id)}
+                                      to={allRouterLink.editAddmisionDetails.replace(
+                                        ":id",
+                                        detail.id
+                                      )}
                                       className="inline-flex items-center px-3 py-1 border border-yellow-300 rounded-md shadow-sm text-sm font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100"
                                     >
                                       Edit
                                     </Link>
                                     <Link
-                                      to={allRouterLink.addmissionDetailsById.replace(":id", detail.id)}
+                                      to={allRouterLink.addmissionDetailsById.replace(
+                                        ":id",
+                                        detail.id
+                                      )}
                                       className="inline-flex items-center px-3 py-1 border border-[#5E35B1] rounded-md shadow-sm text-sm font-medium textTheme bg-blue-50 hover:bg-blue-100"
                                     >
                                       View
                                     </Link>
+                                    <button
+                                      onClick={() => handleDeleteClick(detail)}
+                                      className="inline-flex items-center px-3 py-1 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 transition"
+                                    >
+                                      Deactivate
+                                    </button>
                                   </div>
                                 </td>
                               </tr>
                             ))
                           ) : (
                             <tr>
-                              <td colSpan="9" className="text-center py-6 text-gray-500 dark:text-gray-400">
+                              <td
+                                colSpan="10"
+                                className="text-center py-6 text-gray-500 dark:text-gray-400"
+                              >
                                 No data found.
                               </td>
                             </tr>
@@ -547,4 +898,3 @@ export const AdmissionDetails = () => {
     </div>
   );
 };
-

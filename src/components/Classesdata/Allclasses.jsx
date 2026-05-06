@@ -19,31 +19,31 @@ const Allclasses = () => {
   // Helper function to determine the current academic year based on API dates
   const getCurrentSchoolYear = (years) => {
     if (!years || years.length === 0) return null;
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Normalize to start of day for accurate comparison
-    
+
     // Find the academic year where today falls between start_date and end_date
     const currentYear = years.find(year => {
       const startDate = new Date(year.start_date);
       const endDate = new Date(year.end_date);
       startDate.setHours(0, 0, 0, 0);
       endDate.setHours(0, 0, 0, 0);
-      
+
       return today >= startDate && today <= endDate;
     });
-    
+
     if (currentYear) {
       console.log(`Current academic year: ${currentYear.year_name}`); // For debugging
       return currentYear;
     }
-    
+
     // If no active year found (shouldn't happen with proper data), 
     // find the most recent year based on start_date
     const sortedYears = [...years].sort((a, b) => {
       return new Date(b.start_date) - new Date(a.start_date);
     });
-    
+
     return sortedYears[0];
   };
 
@@ -58,9 +58,11 @@ const Allclasses = () => {
         const studentsData = await fetchStudentSession(currentYear.year_name);
 
         const counts = {};
-        studentsData.forEach((item) => {
-          counts[item.level_name] = (counts[item.level_name] || 0) + 1;
-        });
+        studentsData
+          .filter(item => item.student_is_active)
+          .forEach((item) => {
+            counts[item.level_name] = (counts[item.level_name] || 0) + 1;
+          });
 
         const withCounts = levels.map((level) => ({
           ...level,
@@ -83,7 +85,7 @@ const Allclasses = () => {
       const data = await fetchSchoolYear();
       setSchoolYearLevels(data);
 
-      // ✅ Use date-based logic to find current academic year
+      // Use date-based logic to find current academic year
       if (data.length > 0) {
         const currentYear = getCurrentSchoolYear(data);
         if (currentYear) {
@@ -110,10 +112,12 @@ const Allclasses = () => {
 
       const counts = {};
 
-      studentsData.forEach((item) => {
-        const levelName = item.level_name;
-        counts[levelName] = (counts[levelName] || 0) + 1;
-      });
+      studentsData
+        .filter(item => item.student_is_active)
+        .forEach((item) => {
+          const levelName = item.level_name;
+          counts[levelName] = (counts[levelName] || 0) + 1;
+        });
 
       setYearLevels((prevLevels) =>
         prevLevels.map((level) => ({
@@ -134,7 +138,7 @@ const Allclasses = () => {
       getStudentCountsByYear(selectedYear);
     }
   }, [selectedYear]);
-  
+
   useEffect(() => {
     const init = async () => {
       setLoading(true);

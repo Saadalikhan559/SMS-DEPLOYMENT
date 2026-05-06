@@ -365,10 +365,10 @@ export const AdmissionForm = () => {
         // No errors - show success message
         setBulkUploadSuccess(
           response.data?.message ||
-            "Bulk upload completed successfully!" +
-              (response.data?.created
-                ? ` Created: ${response.data.created} records`
-                : "")
+          "Bulk upload completed successfully!" +
+          (response.data?.created
+            ? ` Created: ${response.data.created} records`
+            : "")
         );
 
         // Reset after successful upload
@@ -396,6 +396,82 @@ export const AdmissionForm = () => {
   };
 
   const onSubmit = async (data) => {
+
+
+    const bankFields = data.banking_detail_input || {};
+
+    const bankValues = [
+      bankFields.holder_name?.trim(),
+      bankFields.account_no?.trim(),
+      bankFields.ifsc_code?.trim(),
+      bankFields.bank_name?.toString().trim(),
+    ];
+
+    const filledCount = bankValues.filter(Boolean).length;
+
+    if (filledCount > 0 && filledCount < 4) {
+      const fieldLabels = {
+        holder_name: "Account Holder Name",
+        account_no: "Account Number",
+        ifsc_code: "IFSC Code",
+        bank_name: "Bank Name",
+      };
+
+      const missingFields = Object.entries(bankFields)
+        .filter(([key, value]) => {
+          if (key === "bank_name") return !value;
+          return !value?.toString().trim();
+        })
+        .map(([key]) => fieldLabels[key])
+        .filter(Boolean);
+
+      setAlertMessage(
+        `Banking details must be either completely filled or completely empty.\n\nMissing fields: ${missingFields.join(
+          ", "
+        )}`
+      );
+
+      setShowAlert(true);
+      return; // stop form submission
+    }
+
+
+    // Residential address validation: if any field filled → city, state, country required
+    const addressFields = data.address_input || {};
+
+    const hasAddrValue = (val) =>
+      val !== null && val !== undefined && String(val).trim() !== "";
+
+    const isAnyAddrFilled =
+      hasAddrValue(addressFields.house_no) ||
+      hasAddrValue(addressFields.habitation) ||
+      hasAddrValue(addressFields.ward_no) ||
+      hasAddrValue(addressFields.zone_no) ||
+      hasAddrValue(addressFields.block) ||
+      hasAddrValue(addressFields.district) ||
+      hasAddrValue(addressFields.division) ||
+      hasAddrValue(addressFields.area_code) ||
+      hasAddrValue(addressFields.address_line) ||
+      hasAddrValue(addressFields.city) ||
+      hasAddrValue(addressFields.state) ||
+      hasAddrValue(addressFields.country);
+
+    if (isAnyAddrFilled) {
+      const missingAddr = [];
+      if (!hasAddrValue(addressFields.city)) missingAddr.push("City");
+      if (!hasAddrValue(addressFields.state)) missingAddr.push("State");
+      if (!hasAddrValue(addressFields.country)) missingAddr.push("Country");
+
+      if (missingAddr.length > 0) {
+        setAlertMessage(
+          `If any residential address detail is entered, then City, State, and Country are required.\n\nMissing fields: ${missingAddr.join(
+            ", "
+          )}`
+        );
+        setShowAlert(true);
+        return;
+      }
+    }
     setLoading(true);
     const submitFormData = new FormData();
 
@@ -510,12 +586,17 @@ export const AdmissionForm = () => {
       await handleAdmissionForm(submitFormData);
       setShowAdmissionSuccessModal(true);
       reset();
+      setSelectedCityName("");
+      setSelectedStateName("");
+      setSelectedCountryName("");
+      setCitySearchInput("");
+      setStateSearchInput("");
+      setCountrySearchInput("");
       setSelectedGuardianType("");
       setIsRTE(false);
     } catch (error) {
       setAlertMessage(
-        `Failed to submit the form: ${
-          error.response?.data?.message || error.message
+        `Failed to submit the form: ${error.response?.data?.message || error.message
         }`
       );
       setShowAlert(true);
@@ -612,6 +693,49 @@ export const AdmissionForm = () => {
     }
   };
 
+
+  // Add this custom hook/logic near the top of your component, after the useForm declaration
+
+  // Watch all banking fields for cross-validation
+  const watchBankHolder = watch("banking_detail_input.holder_name");
+  const watchBankAccount = watch("banking_detail_input.account_no");
+  const watchBankIFSC = watch("banking_detail_input.ifsc_code");
+  const watchBankName = watch("banking_detail_input.bank_name");
+
+  // Check if ANY banking field is filled
+  const isAnyBankFieldFilled = !!(
+    watchBankHolder?.trim() ||
+    watchBankAccount?.trim() ||
+    watchBankIFSC?.trim() ||
+    watchBankName?.trim()
+  );
+
+  // Check which fields are filled and which are missing
+  const bankFieldStatus = {
+    holder_name: !!watchBankHolder?.trim(),
+    account_no: !!watchBankAccount?.trim(),
+    ifsc_code: !!watchBankIFSC?.trim(),
+    bank_name: !!watchBankName?.trim(),
+  };
+
+  const filledBankFieldsCount = Object.values(bankFieldStatus).filter(Boolean).length;
+  const isAllBankFieldsFilled = filledBankFieldsCount === 4;
+  const isBankPartiallyFilled = filledBankFieldsCount > 0 && filledBankFieldsCount < 4;
+
+  // Get missing field names for display
+  const getMissingBankFields = () => {
+    const fieldLabels = {
+      holder_name: "Account Holder Name",
+      account_no: "Account Number",
+      ifsc_code: "IFSC Code",
+      bank_name: "Bank Name",
+    };
+
+    return Object.entries(bankFieldStatus)
+      .filter(([_, filled]) => !filled)
+      .map(([key]) => fieldLabels[key]);
+  };
+
   const filteredCities = city
     .filter((c) => c.name.toLowerCase().includes(citySearchInput.toLowerCase()))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -640,6 +764,58 @@ export const AdmissionForm = () => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+
+
+
+  //  Watch all address fields
+  const watchedAddress = watch("address_input");
+
+  // Helper function
+  const hasAddressValue = (value) => {
+    return value !== null && value !== undefined && String(value).trim() !== "";
+  };
+
+  // Check if ANY address field is filled
+  const isAnyAddressFilled =
+    hasAddressValue(watchedAddress?.house_no) ||
+    hasAddressValue(watchedAddress?.habitation) ||
+    hasAddressValue(watchedAddress?.ward_no) ||
+    hasAddressValue(watchedAddress?.zone_no) ||
+    hasAddressValue(watchedAddress?.block) ||
+    hasAddressValue(watchedAddress?.district) ||
+    hasAddressValue(watchedAddress?.division) ||
+    hasAddressValue(watchedAddress?.area_code) ||
+    hasAddressValue(watchedAddress?.address_line) ||
+    hasAddressValue(watchedAddress?.city) ||
+    hasAddressValue(watchedAddress?.state) ||
+    hasAddressValue(watchedAddress?.country);
+
+  // Individual status
+  const addressRequiredStatus = {
+    city: hasAddressValue(watchedAddress?.city),
+    state: hasAddressValue(watchedAddress?.state),
+    country: hasAddressValue(watchedAddress?.country),
+  };
+
+  const filledRequiredAddressCount =
+    Object.values(addressRequiredStatus).filter(Boolean).length;
+  const isAllRequiredAddressFilled = filledRequiredAddressCount === 3;
+  const isAddressPartiallyFilled =
+    isAnyAddressFilled && !isAllRequiredAddressFilled;
+
+  // Get missing required address field names
+  const getMissingAddressFields = () => {
+    const fieldLabels = {
+      city: "City",
+      state: "State",
+      country: "Country",
+    };
+
+    return Object.entries(addressRequiredStatus)
+      .filter(([_, filled]) => !filled)
+      .map(([key]) => fieldLabels[key]);
+  };
 
   if (loading) {
     return (
@@ -724,9 +900,8 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="First Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.first_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.first_name ? "input-error" : ""
+                  }`}
               />
               {errors.student?.first_name && (
                 <span className="text-error text-sm">
@@ -775,9 +950,8 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="Last Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.last_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.last_name ? "input-error" : ""
+                  }`}
               />
               {errors.student?.last_name && (
                 <span className="text-error text-sm">
@@ -804,9 +978,8 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="student@example.com"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.email ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.email ? "input-error" : ""
+                  }`}
               />
               {errors.student?.email && (
                 <span className="text-error text-sm">
@@ -837,9 +1010,8 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="eg : Password@123"
-                className={`input input-bordered w-full pr-10 focus:outline-none ${
-                  errors.student?.password ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full pr-10 focus:outline-none ${errors.student?.password ? "input-error" : ""
+                  }`}
               />
               <button
                 type="button"
@@ -847,9 +1019,8 @@ export const AdmissionForm = () => {
                 onClick={handleShowPassword}
               >
                 <i
-                  className={`fa-solid ${
-                    showPassword ? "fa-eye-slash" : "fa-eye"
-                  }`}
+                  className={`fa-solid ${showPassword ? "fa-eye-slash" : "fa-eye"
+                    }`}
                 ></i>
               </button>
               {errors.student?.password && (
@@ -880,9 +1051,8 @@ export const AdmissionForm = () => {
                     return true;
                   },
                 })}
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.date_of_birth ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.date_of_birth ? "input-error" : ""
+                  }`}
               />
               {errors.student?.date_of_birth && (
                 <span className="text-error text-sm">
@@ -900,9 +1070,8 @@ export const AdmissionForm = () => {
               </label>
               <select
                 {...register("student.gender")}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer ${
-                  errors.student?.gender ? "select-error" : ""
-                }`}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.student?.gender ? "select-error" : ""
+                  }`}
               >
                 <option value="">Select Gender</option>
                 <option value="Female">Female</option>
@@ -934,9 +1103,8 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="Father's Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.father_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.father_name ? "input-error" : ""
+                  }`}
               />
               {errors.student?.father_name && (
                 <span className="text-error text-sm">
@@ -960,9 +1128,8 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="Mother's Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.mother_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.mother_name ? "input-error" : ""
+                  }`}
               />
               {errors.student?.mother_name && (
                 <span className="text-error text-sm">
@@ -986,9 +1153,8 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="Religion"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.religion ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.religion ? "input-error" : ""
+                  }`}
               />
               {errors.student?.religion && (
                 <span className="text-error text-sm">
@@ -1007,9 +1173,8 @@ export const AdmissionForm = () => {
               </label>
               <select
                 {...register("student.category")}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer ${
-                  errors.student?.category ? "select-error" : ""
-                }`}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.student?.category ? "select-error" : ""
+                  }`}
               >
                 <option value="">Select Category</option>
                 <option value="GEN">General</option>
@@ -1036,9 +1201,8 @@ export const AdmissionForm = () => {
                   min: { value: 0, message: "Height must be positive" },
                 })}
                 placeholder="Height"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.height ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.height ? "input-error" : ""
+                  }`}
                 min={0} // prevents down arrow from going negative
                 onKeyDown={(e) => {
                   if (e.key === "-" || e.key === "e") e.preventDefault(); // prevents typing negative or 'e'
@@ -1065,9 +1229,8 @@ export const AdmissionForm = () => {
                   min: { value: 0, message: "Weight must be positive" },
                 })}
                 placeholder="Weight"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.weight ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.weight ? "input-error" : ""
+                  }`}
               />
               {errors.student?.weight && (
                 <span className="text-error text-sm">
@@ -1374,9 +1537,8 @@ export const AdmissionForm = () => {
                   if (value < 0) e.target.value = 0;
                   if (value > 15) e.target.value = 15;
                 }}
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.number_of_siblings ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.number_of_siblings ? "input-error" : ""
+                  }`}
               />
               {errors.student?.number_of_siblings && (
                 <span className="text-error text-sm">
@@ -1405,9 +1567,8 @@ export const AdmissionForm = () => {
                     },
                   })}
                   placeholder="RTE Number"
-                  className={`input input-bordered w-full focus:outline-none ${
-                    errors.rte_number ? "input-error" : ""
-                  }`}
+                  className={`input input-bordered w-full focus:outline-none ${errors.rte_number ? "input-error" : ""
+                    }`}
                 />
                 {errors.rte_number && (
                   <span className="text-error text-sm">
@@ -1439,9 +1600,8 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="First Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.first_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.first_name ? "input-error" : ""
+                  }`}
               />
               {errors.guardian?.first_name && (
                 <span className="text-error text-sm">
@@ -1489,9 +1649,8 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="Last Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.last_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.last_name ? "input-error" : ""
+                  }`}
               />
               {errors.guardian?.last_name && (
                 <span className="text-error text-sm">
@@ -1517,9 +1676,8 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="guardian@example.com"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.email ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.email ? "input-error" : ""
+                  }`}
               />
               {errors.guardian?.email && (
                 <span className="text-error text-sm">
@@ -1549,9 +1707,8 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="eg: Password@123"
-                className={`input input-bordered w-full pr-10 focus:outline-none ${
-                  errors.guardian?.password ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full pr-10 focus:outline-none ${errors.guardian?.password ? "input-error" : ""
+                  }`}
               />
               <button
                 type="button"
@@ -1559,9 +1716,8 @@ export const AdmissionForm = () => {
                 onClick={handleShowGuardianPassword}
               >
                 <i
-                  className={`fa-solid ${
-                    showGuardianPassword ? "fa-eye-slash" : "fa-eye"
-                  }`}
+                  className={`fa-solid ${showGuardianPassword ? "fa-eye-slash" : "fa-eye"
+                    }`}
                 ></i>
               </button>
               {errors.guardian?.password && (
@@ -1579,9 +1735,8 @@ export const AdmissionForm = () => {
               </label>
               <select
                 {...register("guardian_type_input", {})}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer ${
-                  errors.guardian_type_input ? "select-error" : ""
-                }`}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.guardian_type_input ? "select-error" : ""
+                  }`}
                 value={selectedGuardianType}
                 onChange={handleGuardianTypesChange}
               >
@@ -1622,16 +1777,15 @@ export const AdmissionForm = () => {
                     message: "Phone number must be exactly 10 digits",
                   },
                   validate: (value) => {
-                    if (!value) return true; // ✅ skip validation if empty
+                    if (!value) return true; //   skip validation if empty
                     if (!/^[6789]/.test(value))
                       return "Phone number must start with 6, 7, 8, or 9";
                     return true;
                   },
                 })}
                 placeholder="Phone Number"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.phone_no ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.phone_no ? "input-error" : ""
+                  }`}
                 onInput={(e) => {
                   // Remove any non-digit characters
                   e.target.value = e.target.value.replace(/\D/g, "");
@@ -1695,9 +1849,8 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="Annual Income"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.annual_income ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.annual_income ? "input-error" : ""
+                  }`}
               />
               {errors.guardian?.annual_income && (
                 <span className="text-error text-sm">
@@ -1737,9 +1890,8 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="Qualification"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.qualification ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.qualification ? "input-error" : ""
+                  }`}
               />
               {errors.guardian?.qualification && (
                 <span className="text-error text-sm">
@@ -1765,9 +1917,8 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="Occupation"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.occupation ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.occupation ? "input-error" : ""
+                  }`}
               />
               {errors.guardian?.occupation && (
                 <span className="text-error text-sm">
@@ -1810,14 +1961,15 @@ export const AdmissionForm = () => {
               <label className="label">
                 <span className="label-text flex items-center gap-2">
                   <i className="fa-solid fa-graduation-cap text-sm"></i>
-                  Year Level
+                  Year Level <span className="text-error">*</span>
                 </span>
               </label>
               <select
-                {...register("year_level")}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer ${
-                  errors.year_level ? "select-error" : ""
-                }`}
+                {...register("year_level", {
+                  required: "Year level is required",
+                })}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.year_level ? "select-error" : ""
+                  }`}
               >
                 <option value="">Select Year Level</option>
                 {yearLevel.map((yearlev) => (
@@ -1843,9 +1995,8 @@ export const AdmissionForm = () => {
                 {...register("school_year", {
                   required: "School year is required",
                 })}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer ${
-                  errors.school_year ? "select-error" : ""
-                }`}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.school_year ? "select-error" : ""
+                  }`}
               >
                 <option value="">Select School Year</option>
                 {schoolYears.map((schoolYear) => (
@@ -1866,22 +2017,21 @@ export const AdmissionForm = () => {
               <label className="label">
                 <span className="label-text flex items-center gap-2">
                   <i className="fa-solid fa-school text-sm"></i>
-                  Previous School Name <span className="text-error">*</span>
+                  Previous School Name
                 </span>
               </label>
               <input
                 type="text"
                 {...register("previous_school_name", {
-                  required: "Previous school name is required",
+                  // required: "Previous school name is required",
                   maxLength: {
                     value: 200,
                     message: "School name cannot exceed 200 characters",
                   },
                 })}
                 placeholder="Previous School Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.previous_school_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.previous_school_name ? "input-error" : ""
+                  }`}
               />
               {errors.previous_school_name && (
                 <span className="text-error text-sm">
@@ -1893,22 +2043,21 @@ export const AdmissionForm = () => {
               <label className="label">
                 <span className="label-text flex items-center gap-2">
                   <i className="fa-solid fa-book text-sm"></i>
-                  Previous Class/Grade <span className="text-error">*</span>
+                  Previous Class/Grade
                 </span>
               </label>
               <input
                 type="text"
                 {...register("previous_standard_studied", {
-                  required: "Previous class/grade is required",
+                  // required: "Previous class/grade is required",
                   maxLength: {
                     value: 200,
                     message: "Class/grade cannot exceed 200 characters",
                   },
                 })}
                 placeholder="Previous Class/Grade"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.previous_standard_studied ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.previous_standard_studied ? "input-error" : ""
+                  }`}
               />
               {errors.previous_standard_studied && (
                 <span className="text-error text-sm">
@@ -1938,9 +2087,8 @@ export const AdmissionForm = () => {
                     return true;
                   },
                 })}
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.admission_date ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.admission_date ? "input-error" : ""
+                  }`}
               />
               {errors.admission_date && (
                 <span className="text-error text-sm">
@@ -1953,16 +2101,15 @@ export const AdmissionForm = () => {
               <label className="label">
                 <span className="label-text flex items-center gap-2">
                   <i className="fa-solid fa-file text-sm"></i>
-                  TC Letter <span className="text-error">*</span>
+                  TC Letter
                 </span>
               </label>
               <select
                 {...register("tc_letter", {
-                  required: "TC letter status is required",
+                  // required: "TC letter status is required",
                 })}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer ${
-                  errors.tc_letter ? "select-error" : ""
-                }`}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.tc_letter ? "select-error" : ""
+                  }`}
               >
                 <option value="">Select</option>
                 <option value="no">No</option>
@@ -2008,9 +2155,8 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="Emergency Contact"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.emergency_contact_no ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.emergency_contact_no ? "input-error" : ""
+                  }`}
                 onInput={(e) => {
                   // Remove any non-digit characters
                   e.target.value = e.target.value.replace(/\D/g, "");
@@ -2060,13 +2206,13 @@ export const AdmissionForm = () => {
               <label className="label">
                 <span className="label-text flex items-center gap-2">
                   <i className="fa-solid fa-road text-sm"></i>
-                  Distance to School (km) <span className="text-error">*</span>
+                  Distance to School (km)
                 </span>
               </label>
               <input
                 type="number"
                 {...register("entire_road_distance_from_home_to_school", {
-                  required: "Distance is required",
+                  // required: "Distance is required",
                   min: { value: 0, message: "Distance cannot be negative" },
                   maxLength: {
                     value: 100,
@@ -2074,11 +2220,10 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="Distance in km"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.entire_road_distance_from_home_to_school
-                    ? "input-error"
-                    : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.entire_road_distance_from_home_to_school
+                  ? "input-error"
+                  : ""
+                  }`}
               />
               {errors.entire_road_distance_from_home_to_school && (
                 <span className="text-error text-sm">
@@ -2092,19 +2237,18 @@ export const AdmissionForm = () => {
               <label className="label">
                 <span className="label-text flex items-center gap-2">
                   <i className="fa-solid fa-marker text-sm"></i>
-                  Marks Obtained <span className="text-error">*</span>
+                  Marks Obtained
                 </span>
               </label>
               <input
                 type="number"
                 {...register("obtain_marks", {
-                  required: "Marks obtained is required",
+                  // required: "Marks obtained is required",
                   min: { value: 0, message: "Marks cannot be negative" },
                 })}
                 placeholder="Marks Obtained"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.obtain_marks ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.obtain_marks ? "input-error" : ""
+                  }`}
               />
               {errors.obtain_marks && (
                 <span className="text-error text-sm">
@@ -2116,19 +2260,18 @@ export const AdmissionForm = () => {
               <label className="label">
                 <span className="label-text flex items-center gap-2">
                   <i className="fa-solid fa-chart-simple text-sm"></i>
-                  Total Marks <span className="text-error">*</span>
+                  Total Marks
                 </span>
               </label>
               <input
                 type="number"
                 {...register("total_marks", {
-                  required: "Total marks is required",
+                  // required: "Total marks is required",
                   min: { value: 0, message: "Total marks cannot be negative" },
                 })}
                 placeholder="Total Marks"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.total_marks ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.total_marks ? "input-error" : ""
+                  }`}
               />
               {errors.total_marks && (
                 <span className="text-error text-sm">
@@ -2159,9 +2302,8 @@ export const AdmissionForm = () => {
                 })}
                 placeholder="Previous Percentage"
                 step="0.01"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.previous_percentage ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.previous_percentage ? "input-error" : ""
+                  }`}
                 onInput={(e) => {
                   const value = parseFloat(e.target.value);
                   if (value > 100) e.target.value = 100;
@@ -2176,8 +2318,85 @@ export const AdmissionForm = () => {
             </div>
           </div>
         </div>
+        {/* Residential Address Section */}
         <div className="bg-base-200 p-6 rounded-box mb-6">
           <h2 className="text-2xl font-bold mb-4">Residential Address</h2>
+
+          {/*   Info/Warning Banner */}
+          <div
+            className={`rounded-lg p-4 mb-6 flex items-start gap-3 transition-all duration-300 ${isAddressPartiallyFilled
+              ? "bg-amber-50 border border-amber-300 dark:bg-amber-900/20 dark:border-amber-700"
+              : "bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800"
+              }`}
+          >
+            <i
+              className={`fa-solid ${isAddressPartiallyFilled
+                ? "fa-triangle-exclamation text-amber-500 dark:text-amber-400"
+                : "fa-circle-info text-blue-500 dark:text-blue-400"
+                } text-lg mt-0.5`}
+            ></i>
+            <div className="flex-1">
+              {isAddressPartiallyFilled ? (
+                <>
+                  <p className="font-semibold text-amber-800 dark:text-amber-300 text-sm">
+                    Incomplete Address Details
+                  </p>
+                  <p className="text-amber-700 dark:text-amber-400 text-sm mt-1">
+                    If you enter any address detail, then{" "}
+                    <span className="font-medium">City, State, and Country</span>{" "}
+                    are required. Missing:{" "}
+                    <span className="font-medium">
+                      {getMissingAddressFields().join(", ")}
+                    </span>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-semibold text-blue-800 dark:text-blue-300 text-sm">
+                    Optional Section
+                  </p>
+                  <p className="text-blue-700 dark:text-blue-400 text-sm mt-1">
+                    Residential address is optional. If you fill any detail, then
+                    City, State, and Country must also be selected.
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* Progress indicator */}
+            {isAnyAddressFilled && (
+              <div className="flex items-center gap-2 ml-auto">
+                <span
+                  className={`text-xs font-medium ${isAllRequiredAddressFilled
+                    ? "text-green-600 dark:text-green-400"
+                    : "text-amber-600 dark:text-amber-400"
+                    }`}
+                >
+                  {filledRequiredAddressCount}/3
+                </span>
+                <div className="flex gap-1">
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className={`w-2 h-2 rounded-full transition-colors duration-300 ${i < filledRequiredAddressCount
+                        ? isAllRequiredAddressFilled
+                          ? "bg-green-500"
+                          : "bg-amber-500"
+                        : "bg-gray-300 dark:bg-gray-600"
+                        }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Hidden inputs for RHF */}
+          <input type="hidden" {...register("address_input.city")} />
+          <input type="hidden" {...register("address_input.state")} />
+          <input type="hidden" {...register("address_input.country")} />
+
+          {/* Row 1 */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {/* House Number */}
             <div className="form-control">
@@ -2188,19 +2407,20 @@ export const AdmissionForm = () => {
                 </span>
               </label>
               <input
-                type="number"
+                type="text"
                 {...register("address_input.house_no", {
-                  min: { value: -2147483648, message: "Invalid house number" },
-                  max: { value: 2147483647, message: "Invalid house number" },
+                  pattern: {
+                    value: /^[A-Za-z0-9/-]+$/,
+                    message: "Invalid house number format",
+                  },
                 })}
                 placeholder="House Number"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.address?.house_no ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.address_input?.house_no ? "input-error" : ""
+                  }`}
               />
-              {errors.address?.house_no && (
+              {errors.address_input?.house_no && (
                 <span className="text-error text-sm">
-                  {errors.address.house_no.message}
+                  {errors.address_input.house_no.message}
                 </span>
               )}
             </div>
@@ -2222,13 +2442,12 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="Habitation"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.address?.habitation ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.address_input?.habitation ? "input-error" : ""
+                  }`}
               />
-              {errors.address?.habitation && (
+              {errors.address_input?.habitation && (
                 <span className="text-error text-sm">
-                  {errors.address.habitation.message}
+                  {errors.address_input.habitation.message}
                 </span>
               )}
             </div>
@@ -2250,13 +2469,12 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="Block"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.address?.block ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.address_input?.block ? "input-error" : ""
+                  }`}
               />
-              {errors.address?.block && (
+              {errors.address_input?.block && (
                 <span className="text-error text-sm">
-                  {errors.address.block.message}
+                  {errors.address_input.block.message}
                 </span>
               )}
             </div>
@@ -2283,6 +2501,7 @@ export const AdmissionForm = () => {
             </div>
           </div>
 
+          {/* Row 2 */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
             {/* Zone */}
             <div className="form-control">
@@ -2318,35 +2537,43 @@ export const AdmissionForm = () => {
                 {...register("address_input.district", {
                   maxLength: {
                     value: 50,
-                    message: "District cannot exceed 100 characters",
+                    message: "District cannot exceed 50 characters",
                   },
                 })}
                 placeholder="District"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.address?.district ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.address_input?.district ? "input-error" : ""
+                  }`}
               />
-              {errors.address?.district && (
+              {errors.address_input?.district && (
                 <span className="text-error text-sm">
-                  {errors.address.district.message}
+                  {errors.address_input.district.message}
                 </span>
               )}
             </div>
 
-            {/* City */}
+            {/*   City - Updated */}
             <div className="form-control relative">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
                   <i className="fa-solid fa-city text-sm"></i>
                   City
+                  {isAnyAddressFilled && !addressRequiredStatus.city && (
+                    <span className="text-amber-500 text-xs font-medium ml-1">
+                      (Required)
+                    </span>
+                  )}
                 </span>
               </label>
 
-              {/* Custom dropdown input */}
               <div
-                className={`input input-bordered w-full flex items-center justify-between cursor-pointer ${
-                  errors.address_input?.city ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full flex items-center justify-between cursor-pointer transition-all duration-200 ${errors.address_input?.city
+                  ? "input-error"
+                  : isAnyAddressFilled && !addressRequiredStatus.city
+                    ? "border-amber-400 dark:border-amber-600"
+                    : addressRequiredStatus.city
+                      ? "border-green-400 dark:border-green-600"
+                      : ""
+                  }`}
                 onClick={() => setShowCityDropdown(!showCityDropdown)}
               >
                 <span className="text-gray-700 dark:text-gray-200">
@@ -2354,10 +2581,8 @@ export const AdmissionForm = () => {
                 </span>
               </div>
 
-              {/* Dropdown menu */}
               {showCityDropdown && (
                 <div className="absolute z-10 bg-white dark:bg-[#242627] rounded w-full mt-1 shadow-lg border border-gray-300 dark:border-gray-600">
-                  {/* Search input */}
                   <div className="p-2 sticky top-0 shadow-sm bg-white dark:bg-[#242627]">
                     <input
                       type="text"
@@ -2367,8 +2592,6 @@ export const AdmissionForm = () => {
                       onChange={(e) => setCitySearchInput(e.target.value)}
                     />
                   </div>
-
-                  {/* Filtered city list */}
                   <div className="max-h-40 overflow-y-auto">
                     {filteredCities.length > 0 ? (
                       filteredCities.map((city) => (
@@ -2396,7 +2619,6 @@ export const AdmissionForm = () => {
                 </div>
               )}
 
-              {/* Validation error */}
               {errors.address_input?.city && (
                 <span className="text-error text-sm">
                   {errors.address_input.city.message}
@@ -2421,34 +2643,44 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="Division"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.address?.division ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.address_input?.division ? "input-error" : ""
+                  }`}
               />
-              {errors.address?.division && (
+              {errors.address_input?.division && (
                 <span className="text-error text-sm">
-                  {errors.address.division.message}
+                  {errors.address_input.division.message}
                 </span>
               )}
             </div>
           </div>
 
+          {/* Row 3 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6 items-start">
-            {/* State */}
+            {/*   State - Updated */}
             <div className="form-control relative">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
-                  <i className="fa-solid fa-flag text-sm"></i> State
+                  <i className="fa-solid fa-flag text-sm"></i>
+                  State
+                  {isAnyAddressFilled && !addressRequiredStatus.state && (
+                    <span className="text-amber-500 text-xs font-medium ml-1">
+                      (Required)
+                    </span>
+                  )}
                 </span>
               </label>
               <div
-                className={`input input-bordered w-full flex items-center cursor-pointer py-2`}
+                className={`input input-bordered w-full flex items-center cursor-pointer py-2 transition-all duration-200 ${isAnyAddressFilled && !addressRequiredStatus.state
+                  ? "border-amber-400 dark:border-amber-600"
+                  : addressRequiredStatus.state
+                    ? "border-green-400 dark:border-green-600"
+                    : ""
+                  }`}
                 onClick={() => setShowStateDropdown(!showStateDropdown)}
               >
                 <span className="text-gray-700 dark:text-gray-200">
                   {selectedStateName || "Select State"}
                 </span>
-                {/* Arrow removed */}
               </div>
 
               {showStateDropdown && (
@@ -2492,21 +2724,31 @@ export const AdmissionForm = () => {
               )}
             </div>
 
-            {/* Country */}
+            {/*   Country - Updated */}
             <div className="form-control relative">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
-                  <i className="fa-solid fa-globe text-sm"></i> Country
+                  <i className="fa-solid fa-globe text-sm"></i>
+                  Country
+                  {isAnyAddressFilled && !addressRequiredStatus.country && (
+                    <span className="text-amber-500 text-xs font-medium ml-1">
+                      (Required)
+                    </span>
+                  )}
                 </span>
               </label>
               <div
-                className={`input input-bordered w-full flex items-center cursor-pointer py-2`}
+                className={`input input-bordered w-full flex items-center cursor-pointer py-2 transition-all duration-200 ${isAnyAddressFilled && !addressRequiredStatus.country
+                  ? "border-amber-400 dark:border-amber-600"
+                  : addressRequiredStatus.country
+                    ? "border-green-400 dark:border-green-600"
+                    : ""
+                  }`}
                 onClick={() => setShowCountryDropdown(!showCountryDropdown)}
               >
                 <span className="text-gray-700 dark:text-gray-200">
                   {selectedCountryName || "Select Country"}
                 </span>
-                {/* Arrow removed */}
               </div>
 
               {showCountryDropdown && (
@@ -2554,7 +2796,8 @@ export const AdmissionForm = () => {
             <div className="form-control flex flex-col justify-start relative">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
-                  <i className="fa-solid fa-mailbox text-sm"></i> Pin Code
+                  <i className="fa-solid fa-mailbox text-sm"></i>
+                  Pin Code
                 </span>
               </label>
               <input
@@ -2576,6 +2819,7 @@ export const AdmissionForm = () => {
             </div>
           </div>
 
+          {/* Full Address Line */}
           <div className="grid grid-cols-1 mt-6">
             <div className="form-control">
               <label className="label">
@@ -2593,21 +2837,97 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="Full Address"
-                className={`textarea textarea-bordered w-full focus:outline-none ${
-                  errors.address?.address_line ? "textarea-error" : ""
-                }`}
+                className={`textarea textarea-bordered w-full focus:outline-none ${errors.address_input?.address_line ? "textarea-error" : ""
+                  }`}
               ></textarea>
-              {errors.address?.address_line && (
+              {errors.address_input?.address_line && (
                 <span className="text-error text-sm">
-                  {errors.address.address_line.message}
+                  {errors.address_input.address_line.message}
                 </span>
               )}
             </div>
           </div>
+
+          {/*   Success indicator */}
+          {isAnyAddressFilled && isAllRequiredAddressFilled && (
+            <div className="mt-4 flex items-center gap-2 text-green-600 dark:text-green-400 text-sm animate-fade-in">
+              <i className="fa-solid fa-circle-check"></i>
+              <span>City, State, and Country are complete</span>
+            </div>
+          )}
         </div>
+        {/* Bank Details Section */}
+
         {/* Bank Details Section */}
         <div className="bg-base-200 p-6 rounded-box mb-6">
           <h2 className="text-2xl font-bold mb-4">Bank Account Details</h2>
+
+          {/* Info Banner - Always visible */}
+          <div
+            className={`rounded-lg p-4 mb-6 flex items-start gap-3 transition-all duration-300 ${isBankPartiallyFilled
+              ? "bg-amber-50 border border-amber-300 dark:bg-amber-900/20 dark:border-amber-700"
+              : "bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800"
+              }`}
+          >
+            <i
+              className={`fa-solid ${isBankPartiallyFilled
+                ? "fa-triangle-exclamation text-amber-500 dark:text-amber-400"
+                : "fa-circle-info text-blue-500 dark:text-blue-400"
+                } text-lg mt-0.5`}
+            ></i>
+            <div className="flex-1">
+              {isBankPartiallyFilled ? (
+                <>
+                  <p className="font-semibold text-amber-800 dark:text-amber-300 text-sm">
+                    Incomplete Banking Details
+                  </p>
+                  <p className="text-amber-700 dark:text-amber-400 text-sm mt-1">
+                    Please fill all banking fields or leave all empty. Missing:{" "}
+                    <span className="font-medium">
+                      {getMissingBankFields().join(", ")}
+                    </span>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-semibold text-blue-800 dark:text-blue-300 text-sm">
+                    Optional Section
+                  </p>
+                  <p className="text-blue-700 dark:text-blue-400 text-sm mt-1">
+                    Bank details are optional. If you choose to provide them,
+                    all four fields must be filled.
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* Progress indicator */}
+            {isAnyBankFieldFilled && (
+              <div className="flex items-center gap-2 ml-auto">
+                <span
+                  className={`text-xs font-medium ${isAllBankFieldsFilled
+                    ? "text-green-600 dark:text-green-400"
+                    : "text-amber-600 dark:text-amber-400"
+                    }`}
+                >
+                  {filledBankFieldsCount}/4
+                </span>
+                <div className="flex gap-1">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className={`w-2 h-2 rounded-full transition-colors duration-300 ${i < filledBankFieldsCount
+                        ? isAllBankFieldsFilled
+                          ? "bg-green-500"
+                          : "bg-amber-500"
+                        : "bg-gray-300 dark:bg-gray-600"
+                        }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Row 1: Account Holder Name & Bank Name */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2617,6 +2937,11 @@ export const AdmissionForm = () => {
                 <span className="label-text flex items-center gap-2">
                   <i className="fa-solid fa-user text-sm"></i>
                   Account Holder Name
+                  {isBankPartiallyFilled && !bankFieldStatus.holder_name && (
+                    <span className="text-amber-500 text-xs font-medium ml-1">
+                      (Required)
+                    </span>
+                  )}
                 </span>
               </label>
               <input
@@ -2627,16 +2952,26 @@ export const AdmissionForm = () => {
                     message: "Holder name cannot exceed 50 characters",
                   },
                   validate: (value) => {
-                    if (!value) return true; // allow empty
+                    if (!value?.trim() && isAnyBankFieldFilled && !bankFieldStatus.holder_name) {
+                      // Only show validation error on submit, not while typing
+                      // The banner handles the visual feedback
+                      return true;
+                    }
+                    if (!value) return true;
                     if (!/^[A-Za-z]+(?: [A-Za-z]+)*$/.test(value))
                       return "Enter a valid name (alphabets & single spaces only)";
                     return true;
                   },
                 })}
                 placeholder="Full Name as in Bank"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.banking_detail_input?.holder_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none transition-all duration-200 ${errors.banking_detail_input?.holder_name
+                  ? "input-error"
+                  : isBankPartiallyFilled && !bankFieldStatus.holder_name
+                    ? "border-amber-400 dark:border-amber-600 focus:border-amber-500"
+                    : bankFieldStatus.holder_name
+                      ? "border-green-400 dark:border-green-600"
+                      : ""
+                  }`}
                 onInput={(e) => {
                   e.target.value = e.target.value
                     .replace(/[^A-Za-z\s]/g, "")
@@ -2657,13 +2992,18 @@ export const AdmissionForm = () => {
                 <span className="label-text flex items-center gap-2">
                   <i className="fa-solid fa-university text-sm"></i>
                   Bank Name
+                  {isBankPartiallyFilled && !bankFieldStatus.bank_name && (
+                    <span className="text-amber-500 text-xs font-medium ml-1">
+                      (Required)
+                    </span>
+                  )}
                 </span>
               </label>
 
               <input
                 type="hidden"
                 {...register("banking_detail_input.bank_name", {
-                  validate: (v) => true, // allow empty
+                  validate: (v) => true,
                   pattern: {
                     value: /^\d+$/,
                     message: "Invalid bank selection",
@@ -2675,9 +3015,14 @@ export const AdmissionForm = () => {
                 type="text"
                 value={bankQuery}
                 placeholder="Bank Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.banking_detail_input?.bank_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none transition-all duration-200 ${errors.banking_detail_input?.bank_name
+                  ? "input-error"
+                  : isBankPartiallyFilled && !bankFieldStatus.bank_name
+                    ? "border-amber-400 dark:border-amber-600 focus:border-amber-500"
+                    : bankFieldStatus.bank_name
+                      ? "border-green-400 dark:border-green-600"
+                      : ""
+                  }`}
                 onChange={handleBankInputChange}
                 onFocus={() => {
                   setFilteredBanks(bankNames);
@@ -2688,7 +3033,6 @@ export const AdmissionForm = () => {
                     e.preventDefault();
                     const raw = (bankQuery || "").trim();
                     if (!raw) return;
-
                     const matched = bankNames.find(
                       (b) => b.name.toLowerCase() === raw.toLowerCase()
                     );
@@ -2742,9 +3086,7 @@ export const AdmissionForm = () => {
               )}
 
               {!!createBankError && (
-                <span className="text-error text-sm mt-1">
-                  {createBankError}
-                </span>
+                <span className="text-error text-sm mt-1">{createBankError}</span>
               )}
             </div>
           </div>
@@ -2757,6 +3099,11 @@ export const AdmissionForm = () => {
                 <span className="label-text flex items-center gap-2">
                   <i className="fa-solid fa-credit-card text-sm"></i>
                   Account Number
+                  {isBankPartiallyFilled && !bankFieldStatus.account_no && (
+                    <span className="text-amber-500 text-xs font-medium ml-1">
+                      (Required)
+                    </span>
+                  )}
                 </span>
               </label>
               <input
@@ -2768,9 +3115,14 @@ export const AdmissionForm = () => {
                   },
                 })}
                 placeholder="Account Number"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.banking_detail_input?.account_no ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none transition-all duration-200 ${errors.banking_detail_input?.account_no
+                  ? "input-error"
+                  : isBankPartiallyFilled && !bankFieldStatus.account_no
+                    ? "border-amber-400 dark:border-amber-600 focus:border-amber-500"
+                    : bankFieldStatus.account_no
+                      ? "border-green-400 dark:border-green-600"
+                      : ""
+                  }`}
                 onInput={(e) => {
                   e.target.value = e.target.value.replace(/[^0-9]/g, "");
                 }}
@@ -2788,6 +3140,11 @@ export const AdmissionForm = () => {
                 <span className="label-text flex items-center gap-2">
                   <i className="fa-solid fa-code text-sm"></i>
                   IFSC Code
+                  {isBankPartiallyFilled && !bankFieldStatus.ifsc_code && (
+                    <span className="text-amber-500 text-xs font-medium ml-1">
+                      (Required)
+                    </span>
+                  )}
                 </span>
               </label>
               <input
@@ -2798,10 +3155,15 @@ export const AdmissionForm = () => {
                     message: "Invalid IFSC code format",
                   },
                 })}
-                placeholder=" eg: SBIN0001234 or BARB0BHOPAL"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.banking_detail_input?.ifsc_code ? "input-error" : ""
-                }`}
+                placeholder="eg: SBIN0001234 or BARB0BHOPAL"
+                className={`input input-bordered w-full focus:outline-none transition-all duration-200 ${errors.banking_detail_input?.ifsc_code
+                  ? "input-error"
+                  : isBankPartiallyFilled && !bankFieldStatus.ifsc_code
+                    ? "border-amber-400 dark:border-amber-600 focus:border-amber-500"
+                    : bankFieldStatus.ifsc_code
+                      ? "border-green-400 dark:border-green-600"
+                      : ""
+                  }`}
                 onInput={(e) => {
                   e.target.value = e.target.value
                     .toUpperCase()
@@ -2816,6 +3178,14 @@ export const AdmissionForm = () => {
               )}
             </div>
           </div>
+
+          {/* Success indicator when all fields are filled */}
+          {isAllBankFieldsFilled && (
+            <div className="mt-4 flex items-center gap-2 text-green-600 dark:text-green-400 text-sm animate-fade-in">
+              <i className="fa-solid fa-circle-check"></i>
+              <span>All banking details are complete</span>
+            </div>
+          )}
         </div>
 
         {/* Submit Button */}

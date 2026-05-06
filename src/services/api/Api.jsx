@@ -1628,3 +1628,47 @@ export const fetchSchoolIncomeById = async (id) => {
     throw error;
   }
 };
+
+
+export const deactivateStudents = async (studentIds) => {
+  try {
+    const response = await axios.patch(
+      `${BASE_URL}/s/graduate/bulk-deactivate/`,
+      { student_ids: studentIds }
+    );
+    return response.data;
+  } catch (err) {
+    console.error("Failed to deactivate students:", err);
+    throw err;
+  }
+};
+
+export const fetchInactiveStudents = async () => {
+  try {
+    const response = await axios.get(
+      `${BASE_URL}/s/graduate/inactive-students/`
+    );
+    const data = response.data;
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    if (Array.isArray(data?.data)) return data.data;
+    return [];
+  } catch (err) {
+    console.error("Failed to fetch inactive students:", err);
+    throw err;
+  }
+};
+
+
+export const reactivateStudents = async (studentIds) => {
+  try {
+    const response = await axios.patch(
+      `${BASE_URL}/s/graduate/bulk-reactivate/`,
+      { student_ids: studentIds }
+    );
+    return response.data;
+  } catch (err) {
+    console.error("Failed to reactivate students:", err);
+    throw err;
+  }
+};
