@@ -32,12 +32,22 @@ const AllStudentsPerClass = () => {
         selectedYear,
         id,
       );
+      
 
-      const sortedData = [...data].sort((a, b) =>
-        (a.student_name || "").localeCompare(b.student_name || "", "en", {
-          sensitivity: "base",
-        }),
-      );
+      // const sortedData = [...data].sort((a, b) =>
+      //   (a.student_name || "").localeCompare(b.student_name || "", "en", {
+      //     sensitivity: "base",
+      //   }),
+      // );
+
+
+      const activeStudents = data.filter((s) => s.student_is_active);
+
+const sortedData = [...activeStudents].sort((a, b) =>
+  (a.student_name || "").localeCompare(b.student_name || "", "en", {
+    sensitivity: "base",
+  }),
+);
 
       setStudents(sortedData);
     } catch (err) {
@@ -122,6 +132,7 @@ const AllStudentsPerClass = () => {
   }, [id, selectedYear]);
 
   const filteredStudents = students.filter((student) =>
+        // student.student_is_active && 
     student.student_name?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
