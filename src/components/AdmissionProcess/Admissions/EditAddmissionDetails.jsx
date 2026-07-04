@@ -59,7 +59,7 @@ export const EditAddmissionDetails = () => {
     register,
     watch,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, dirtyFields },
     setValue,
     resetField,
     trigger,
@@ -141,6 +141,26 @@ export const EditAddmissionDetails = () => {
       enrollment_no: "",
     },
   });
+
+
+  const filterByDirty = (obj, dirty) => {
+  if (typeof dirty === 'boolean') {
+    return dirty ? obj : undefined;
+  }
+  if (obj === null || typeof obj !== 'object') return undefined;
+  const result = {};
+  Object.keys(dirty).forEach((key) => {
+    const childObj = obj[key];
+    const childDirty = dirty[key];
+    if (childDirty !== undefined) {
+      const filtered = filterByDirty(childObj, childDirty);
+      if (filtered !== undefined) {
+        result[key] = filtered;
+      }
+    }
+  });
+  return Object.keys(result).length > 0 ? result : undefined;
+};
 
   // Helper function to check if any bank field is filled
   const checkIfAnyBankFieldFilled = () => {
@@ -561,165 +581,575 @@ export const EditAddmissionDetails = () => {
     });
   }, [register]);
 
-  const onSubmit = async (data) => {
-    setLoading(true);
+  // const onSubmit = async (data) => {
+  //   setLoading(true);
 
-    const submitFormData = new FormData();
+  //   const submitFormData = new FormData();
 
-    // Enhanced helper functions
-    const handleOptionalField = (value) => {
-      if (value === "" || value === undefined || value === null) return null;
-      return value;
-    };
+  //   // Enhanced helper functions
+  //   const handleOptionalField = (value) => {
+  //     if (value === "" || value === undefined || value === null) return null;
+  //     return value;
+  //   };
 
-    const handleOptionalNumber = (value) => {
-      if (value === "" || value === undefined || value === null) return null;
-      const num = parseFloat(value);
-      return isNaN(num) ? null : num;
-    };
+  //   const handleOptionalNumber = (value) => {
+  //     if (value === "" || value === undefined || value === null) return null;
+  //     const num = parseFloat(value);
+  //     return isNaN(num) ? null : num;
+  //   };
 
-    const handleOptionalInteger = (value) => {
-      if (value === "" || value === undefined || value === null) return null;
-      const num = parseInt(value, 10);
-      return isNaN(num) ? null : num;
-    };
+  //   const handleOptionalInteger = (value) => {
+  //     if (value === "" || value === undefined || value === null) return null;
+  //     const num = parseInt(value, 10);
+  //     return isNaN(num) ? null : num;
+  //   };
 
-    // Fix date handling
-    const handleDateField = (value) => {
-      if (!value) return null;
+  //   // Fix date handling
+  //   const handleDateField = (value) => {
+  //     if (!value) return null;
 
-      try {
-        const date = new Date(value);
-        if (isNaN(date.getTime())) return null;
+  //     try {
+  //       const date = new Date(value);
+  //       if (isNaN(date.getTime())) return null;
 
-        // Format as YYYY-MM-DD
-        return date.toISOString().split("T")[0];
-      } catch {
-        return null;
-      }
-    };
+  //       // Format as YYYY-MM-DD
+  //       return date.toISOString().split("T")[0];
+  //     } catch {
+  //       return null;
+  //     }
+  //   };
 
-    const transformedData = {
-      student: {
-        first_name: data.student.first_name || "",
-        middle_name: handleOptionalField(data.student.middle_name),
-        last_name: handleOptionalField(data.student.last_name),
-        email: data.student.email || "",
-        father_name: handleOptionalField(data.student.father_name),
-        mother_name: handleOptionalField(data.student.mother_name),
-        // Fix: Use date handler
-        date_of_birth: handleDateField(data.student.date_of_birth),
-        gender: handleOptionalField(data.student.gender),
-        religion: handleOptionalField(data.student.religion),
-        category: handleOptionalField(data.student.category),
-        height: handleOptionalNumber(data.student.height),
-        weight: handleOptionalNumber(data.student.weight),
-        blood_group: handleOptionalField(data.student.blood_group),
-        number_of_siblings:
-          handleOptionalInteger(data.student.number_of_siblings) || 0,
-        scholar_number: handleOptionalField(data.student.scholar_number),
-        aadhaar_number: handleOptionalField(data.student.aadhaar_number),
-        FMID_number: handleOptionalField(data.student.FMID_number),
-        apaar_number: handleOptionalField(data.student.apaar_number),
-        PEN_number: handleOptionalField(data.student.PEN_number),
-        BPL_number: handleOptionalField(data.student.BPL_number),
-        SSSMID: handleOptionalField(data.student.SSSMID),
-        class_section: handleOptionalField(data.class_section),
-        is_active: data.student.is_active || "true",
-      },
-      guardian: {
-        first_name: handleOptionalField(data.guardian.first_name),
-        middle_name: handleOptionalField(data.guardian.middle_name),
-        last_name: handleOptionalField(data.guardian.last_name),
-        email: handleOptionalField(data.guardian.email),
-        phone_no: handleOptionalField(data.guardian.phone_no),
-        annual_income:
-          handleOptionalNumber(data.guardian.annual_income) || null,
-        // Fix means_of_livelihood - don't send if empty
-        means_of_livelihood: data.guardian.means_of_livelihood
-          ? data.guardian.means_of_livelihood
-          : null,
-        qualification: handleOptionalField(data.guardian.qualification),
-        occupation: handleOptionalField(data.guardian.occupation),
-        designation: handleOptionalField(data.guardian.designation),
-      },
-      address_input: {
-        house_no: handleOptionalInteger(data.address_input.house_no),
-        habitation: handleOptionalField(data.address_input.habitation),
-        ward_no: handleOptionalInteger(data.address_input.ward_no),
-        zone_no: handleOptionalInteger(data.address_input.zone_no),
-        block: handleOptionalField(data.address_input.block),
-        district: handleOptionalField(data.address_input.district),
-        division: handleOptionalField(data.address_input.division),
-        area_code: handleOptionalInteger(data.address_input.area_code),
-        country: handleOptionalField(data.address_input.country),
-        state: handleOptionalField(data.address_input.state),
-        city: handleOptionalField(data.address_input.city),
-        address_line: handleOptionalField(data.address_input.address_line),
-      },
-      banking_detail_input: {
-        account_no: handleOptionalInteger(data.banking_detail_input.account_no),
-        ifsc_code: handleOptionalField(data.banking_detail_input.ifsc_code),
-        holder_name: handleOptionalField(data.banking_detail_input.holder_name),
-        bank_name: handleOptionalField(data.banking_detail_input.bank_name),
-      },
-      guardian_type_input: handleOptionalField(data.guardian_type_input),
-      year_level: handleOptionalField(data.year_level),
-      school_year: handleOptionalField(data.school_year),
-      admission_date: handleDateField(data.admission_date),
-      previous_school_name: handleOptionalField(data.previous_school_name),
-      previous_standard_studied: handleOptionalField(
-        data.previous_standard_studied
-      ),
-      tc_letter: handleOptionalField(data.tc_letter),
-      emergency_contact_no: handleOptionalField(data.emergency_contact_no),
-      entire_road_distance_from_home_to_school: handleOptionalField(
-        data.entire_road_distance_from_home_to_school
-      ),
-      obtain_marks: handleOptionalNumber(data.obtain_marks),
-      total_marks: handleOptionalNumber(data.total_marks),
-      previous_percentage: handleOptionalNumber(data.previous_percentage),
-      is_rte: data.is_rte || false,
-      rte_number: data.is_rte ? handleOptionalField(data.rte_number) : null,
-      enrollment_no: handleOptionalField(data.enrollment_no),
-    };
+  //   const transformedData = {
+  //     student: {
+  //       first_name: data.student.first_name || "",
+  //       middle_name: handleOptionalField(data.student.middle_name),
+  //       last_name: handleOptionalField(data.student.last_name),
+  //       email: data.student.email || "",
+  //       father_name: handleOptionalField(data.student.father_name),
+  //       mother_name: handleOptionalField(data.student.mother_name),
+  //       // Fix: Use date handler
+  //       date_of_birth: handleDateField(data.student.date_of_birth),
+  //       gender: handleOptionalField(data.student.gender),
+  //       religion: handleOptionalField(data.student.religion),
+  //       category: handleOptionalField(data.student.category),
+  //       height: handleOptionalNumber(data.student.height),
+  //       weight: handleOptionalNumber(data.student.weight),
+  //       blood_group: handleOptionalField(data.student.blood_group),
+  //       number_of_siblings:
+  //         handleOptionalInteger(data.student.number_of_siblings) || 0,
+  //       scholar_number: handleOptionalField(data.student.scholar_number),
+  //       aadhaar_number: handleOptionalField(data.student.aadhaar_number),
+  //       FMID_number: handleOptionalField(data.student.FMID_number),
+  //       apaar_number: handleOptionalField(data.student.apaar_number),
+  //       PEN_number: handleOptionalField(data.student.PEN_number),
+  //       BPL_number: handleOptionalField(data.student.BPL_number),
+  //       SSSMID: handleOptionalField(data.student.SSSMID),
+  //       class_section: handleOptionalField(data.class_section),
+  //       is_active: data.student.is_active || "true",
+  //     },
+  //     guardian: {
+  //       first_name: handleOptionalField(data.guardian.first_name),
+  //       middle_name: handleOptionalField(data.guardian.middle_name),
+  //       last_name: handleOptionalField(data.guardian.last_name),
+  //       email: handleOptionalField(data.guardian.email),
+  //       phone_no: handleOptionalField(data.guardian.phone_no),
+  //       annual_income:
+  //         handleOptionalNumber(data.guardian.annual_income) || null,
+  //       // Fix means_of_livelihood - don't send if empty
+  //       means_of_livelihood: data.guardian.means_of_livelihood
+  //         ? data.guardian.means_of_livelihood
+  //         : null,
+  //       qualification: handleOptionalField(data.guardian.qualification),
+  //       occupation: handleOptionalField(data.guardian.occupation),
+  //       designation: handleOptionalField(data.guardian.designation),
+  //     },
+  //     address_input: {
+  //       house_no: handleOptionalInteger(data.address_input.house_no),
+  //       habitation: handleOptionalField(data.address_input.habitation),
+  //       ward_no: handleOptionalInteger(data.address_input.ward_no),
+  //       zone_no: handleOptionalInteger(data.address_input.zone_no),
+  //       block: handleOptionalField(data.address_input.block),
+  //       district: handleOptionalField(data.address_input.district),
+  //       division: handleOptionalField(data.address_input.division),
+  //       area_code: handleOptionalInteger(data.address_input.area_code),
+  //       country: handleOptionalField(data.address_input.country),
+  //       state: handleOptionalField(data.address_input.state),
+  //       city: handleOptionalField(data.address_input.city),
+  //       address_line: handleOptionalField(data.address_input.address_line),
+  //     },
+  //     banking_detail_input: {
+  //       account_no: handleOptionalInteger(data.banking_detail_input.account_no),
+  //       ifsc_code: handleOptionalField(data.banking_detail_input.ifsc_code),
+  //       holder_name: handleOptionalField(data.banking_detail_input.holder_name),
+  //       bank_name: handleOptionalField(data.banking_detail_input.bank_name),
+  //     },
+  //     guardian_type_input: handleOptionalField(data.guardian_type_input),
+  //     year_level: handleOptionalField(data.year_level),
+  //     school_year: handleOptionalField(data.school_year),
+  //     admission_date: handleDateField(data.admission_date),
+  //     previous_school_name: handleOptionalField(data.previous_school_name),
+  //     previous_standard_studied: handleOptionalField(
+  //       data.previous_standard_studied
+  //     ),
+  //     tc_letter: handleOptionalField(data.tc_letter),
+  //     emergency_contact_no: handleOptionalField(data.emergency_contact_no),
+  //     entire_road_distance_from_home_to_school: handleOptionalField(
+  //       data.entire_road_distance_from_home_to_school
+  //     ),
+  //     obtain_marks: handleOptionalNumber(data.obtain_marks),
+  //     total_marks: handleOptionalNumber(data.total_marks),
+  //     previous_percentage: handleOptionalNumber(data.previous_percentage),
+  //     is_rte: data.is_rte || false,
+  //     rte_number: data.is_rte ? handleOptionalField(data.rte_number) : null,
+  //     enrollment_no: handleOptionalField(data.enrollment_no),
+  //   };
 
 
-    // Build FormData - CRITICAL FIX: Don't append null values
-    Object.entries(transformedData).forEach(([key, value]) => {
-      if (typeof value === "object" && value !== null) {
-        Object.entries(value).forEach(([subKey, subValue]) => {
-          // Only append if value is NOT null and NOT undefined
-          if (subValue !== null && subValue !== undefined) {
-            submitFormData.append(`${key}[${subKey}]`, subValue);
-          }
-        });
-      } else if (value !== null && value !== undefined) {
-        submitFormData.append(key, value);
-      }
-    });
+  //   // Build FormData - CRITICAL FIX: Don't append null values
+  //   Object.entries(transformedData).forEach(([key, value]) => {
+  //     if (typeof value === "object" && value !== null) {
+  //       Object.entries(value).forEach(([subKey, subValue]) => {
+  //         // Only append if value is NOT null and NOT undefined
+  //         if (subValue !== null && subValue !== undefined) {
+  //           submitFormData.append(`${key}[${subKey}]`, subValue);
+  //         }
+  //       });
+  //     } else if (value !== null && value !== undefined) {
+  //       submitFormData.append(key, value);
+  //     }
+  //   });
 
-    // Debug: Log FormData contents
-    console.log("FormData contents:");
-    for (let pair of submitFormData.entries()) {
-      console.log(pair[0] + ": " + pair[1]);
-    }
+  //   // Debug: Log FormData contents
+  //   console.log("FormData contents:");
+  //   for (let pair of submitFormData.entries()) {
+  //     console.log(pair[0] + ": " + pair[1]);
+  //   }
 
+  //   try {
+  //     await handleEditAdmissionForm(submitFormData, id);
+  //     setShowEditSuccessModal(true);
+  //   } catch (error) {
+  //     console.error("Update error:", error.response?.data || error.message);
+  //     setAlertMessage(
+  //       `Failed to update the form: ${
+  //         error.response?.data?.message || error.message
+  //       }`
+  //     );
+  //     setShowAlert(true);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+
+//   const onSubmit = async (data) => {
+//   // 1. चेक करें कि कोई फ़ील्ड बदली है या नहीं
+//   const hasDirty = Object.keys(dirtyFields).length > 0;
+//   if (!hasDirty) {
+//     setAlertMessage("कोई बदलाव नहीं किया गया।");
+//     setShowAlert(true);
+//     return;
+//   }
+
+//   setLoading(true);
+
+//   // ----- Helper functions (पहले की तरह) -----
+//   const handleOptionalField = (value) => {
+//     if (value === "" || value === undefined || value === null) return null;
+//     return value;
+//   };
+
+//   const handleOptionalNumber = (value) => {
+//     if (value === "" || value === undefined || value === null) return null;
+//     const num = parseFloat(value);
+//     return isNaN(num) ? null : num;
+//   };
+
+//   const handleOptionalInteger = (value) => {
+//     if (value === "" || value === undefined || value === null) return null;
+//     const num = parseInt(value, 10);
+//     return isNaN(num) ? null : num;
+//   };
+
+//   const handleDateField = (value) => {
+//     if (!value) return null;
+//     try {
+//       const date = new Date(value);
+//       if (isNaN(date.getTime())) return null;
+//       return date.toISOString().split("T")[0];
+//     } catch {
+//       return null;
+//     }
+//   };
+
+//   // ----- पूरा transformedData बनाएँ (सभी फ़ील्ड्स) -----
+//   const transformedData = {
+//     student: {
+//       first_name: data.student.first_name || "",
+//       middle_name: handleOptionalField(data.student.middle_name),
+//       last_name: handleOptionalField(data.student.last_name),
+//       email: data.student.email || "",
+//       father_name: handleOptionalField(data.student.father_name),
+//       mother_name: handleOptionalField(data.student.mother_name),
+//       date_of_birth: handleDateField(data.student.date_of_birth),
+//       gender: handleOptionalField(data.student.gender),
+//       religion: handleOptionalField(data.student.religion),
+//       category: handleOptionalField(data.student.category),
+//       height: handleOptionalNumber(data.student.height),
+//       weight: handleOptionalNumber(data.student.weight),
+//       blood_group: handleOptionalField(data.student.blood_group),
+//       number_of_siblings: handleOptionalInteger(data.student.number_of_siblings) || 0,
+//       scholar_number: handleOptionalField(data.student.scholar_number),
+//       aadhaar_number: handleOptionalField(data.student.aadhaar_number),
+//       FMID_number: handleOptionalField(data.student.FMID_number),
+//       apaar_number: handleOptionalField(data.student.apaar_number),
+//       PEN_number: handleOptionalField(data.student.PEN_number),
+//       BPL_number: handleOptionalField(data.student.BPL_number),
+//       SSSMID: handleOptionalField(data.student.SSSMID),
+//       class_section: handleOptionalField(data.class_section),
+//       is_active: data.student.is_active || "true",
+//     },
+//     guardian: {
+//       first_name: handleOptionalField(data.guardian.first_name),
+//       middle_name: handleOptionalField(data.guardian.middle_name),
+//       last_name: handleOptionalField(data.guardian.last_name),
+//       email: handleOptionalField(data.guardian.email),
+//       phone_no: handleOptionalField(data.guardian.phone_no),
+//       annual_income: handleOptionalNumber(data.guardian.annual_income) || null,
+//       means_of_livelihood: data.guardian.means_of_livelihood ? data.guardian.means_of_livelihood : null,
+//       qualification: handleOptionalField(data.guardian.qualification),
+//       occupation: handleOptionalField(data.guardian.occupation),
+//       designation: handleOptionalField(data.guardian.designation),
+//     },
+//     address_input: {
+//       house_no: handleOptionalInteger(data.address_input.house_no),
+//       habitation: handleOptionalField(data.address_input.habitation),
+//       ward_no: handleOptionalInteger(data.address_input.ward_no),
+//       zone_no: handleOptionalInteger(data.address_input.zone_no),
+//       block: handleOptionalField(data.address_input.block),
+//       district: handleOptionalField(data.address_input.district),
+//       division: handleOptionalField(data.address_input.division),
+//       area_code: handleOptionalInteger(data.address_input.area_code),
+//       country: handleOptionalField(data.address_input.country),
+//       state: handleOptionalField(data.address_input.state),
+//       city: handleOptionalField(data.address_input.city),
+//       address_line: handleOptionalField(data.address_input.address_line),
+//     },
+//     banking_detail_input: {
+//       account_no: handleOptionalInteger(data.banking_detail_input.account_no),
+//       ifsc_code: handleOptionalField(data.banking_detail_input.ifsc_code),
+//       holder_name: handleOptionalField(data.banking_detail_input.holder_name),
+//       bank_name: handleOptionalField(data.banking_detail_input.bank_name),
+//     },
+//     guardian_type_input: handleOptionalField(data.guardian_type_input),
+//     year_level: handleOptionalField(data.year_level),
+//     school_year: handleOptionalField(data.school_year),
+//     admission_date: handleDateField(data.admission_date),
+//     previous_school_name: handleOptionalField(data.previous_school_name),
+//     previous_standard_studied: handleOptionalField(data.previous_standard_studied),
+//     tc_letter: handleOptionalField(data.tc_letter),
+//     emergency_contact_no: handleOptionalField(data.emergency_contact_no),
+//     entire_road_distance_from_home_to_school: handleOptionalField(data.entire_road_distance_from_home_to_school),
+//     obtain_marks: handleOptionalNumber(data.obtain_marks),
+//     total_marks: handleOptionalNumber(data.total_marks),
+//     previous_percentage: handleOptionalNumber(data.previous_percentage),
+//     is_rte: data.is_rte || false,
+//     rte_number: data.is_rte ? handleOptionalField(data.rte_number) : null,
+//     enrollment_no: handleOptionalField(data.enrollment_no),
+//   };
+
+//   // ----- फ़िल्टर फंक्शन: केवल dirty fields रखें -----
+//   const filterByDirty = (obj, dirty) => {
+//     if (typeof dirty === 'boolean') {
+//       return dirty ? obj : undefined;
+//     }
+//     if (obj === null || typeof obj !== 'object') return undefined;
+//     const result = {};
+//     Object.keys(dirty).forEach((key) => {
+//       const childObj = obj[key];
+//       const childDirty = dirty[key];
+//       if (childDirty !== undefined) {
+//         const filtered = filterByDirty(childObj, childDirty);
+//         if (filtered !== undefined) {
+//           result[key] = filtered;
+//         }
+//       }
+//     });
+//     return Object.keys(result).length > 0 ? result : undefined;
+//   };
+
+//   // केवल बदले हुए फ़ील्ड्स वाला ऑब्जेक्ट
+//   const dirtyTransformed = filterByDirty(transformedData, dirtyFields);
+
+//   // अगर filter के बाद कुछ न बचे (सुरक्षा चेक)
+//   if (!dirtyTransformed || Object.keys(dirtyTransformed).length === 0) {
+//     setAlertMessage("कोई बदलाव नहीं किया गया।");
+//     setShowAlert(true);
+//     setLoading(false);
+//     return;
+//   }
+
+//   // ----- FormData बनाएँ केवल dirtyTransformed से -----
+//   const submitFormData = new FormData();
+//   Object.entries(dirtyTransformed).forEach(([key, value]) => {
+//     if (typeof value === 'object' && value !== null) {
+//       Object.entries(value).forEach(([subKey, subValue]) => {
+//         // null या undefined को skip करें (यदि आप null भेजना चाहते हैं तो check हटा दें)
+//         if (subValue !== null && subValue !== undefined) {
+//           submitFormData.append(`${key}[${subKey}]`, subValue);
+//         }
+//       });
+//     } else if (value !== null && value !== undefined) {
+//       submitFormData.append(key, value);
+//     }
+//   });
+
+//   // (Optional) Debug: FormData entries log करें
+//   // for (let pair of submitFormData.entries()) {
+//   //   console.log(pair[0] + ': ' + pair[1]);
+//   // }
+
+//   // ----- API Call -----
+//   try {
+//     await handleEditAdmissionForm(submitFormData, id);
+//     setShowEditSuccessModal(true);
+//   } catch (error) {
+//     console.error("Update error:", error.response?.data || error.message);
+//     setAlertMessage(
+//       `Failed to update the form: ${error.response?.data?.message || error.message}`
+//     );
+//     setShowAlert(true);
+//   } finally {
+//     setLoading(false);
+//   }
+// };
+
+
+const onSubmit = async (data) => {
+  setLoading(true);
+
+  // ----- Helper functions (पहले की तरह) -----
+  const handleOptionalField = (value) => {
+    if (value === "" || value === undefined || value === null) return null;
+    return value;
+  };
+
+  const handleOptionalNumber = (value) => {
+    if (value === "" || value === undefined || value === null) return null;
+    const num = parseFloat(value);
+    return isNaN(num) ? null : num;
+  };
+
+  const handleOptionalInteger = (value) => {
+    if (value === "" || value === undefined || value === null) return null;
+    const num = parseInt(value, 10);
+    return isNaN(num) ? null : num;
+  };
+
+  const handleDateField = (value) => {
+    if (!value) return null;
     try {
-      await handleEditAdmissionForm(submitFormData, id);
-      setShowEditSuccessModal(true);
-    } catch (error) {
-      console.error("Update error:", error.response?.data || error.message);
-      setAlertMessage(
-        `Failed to update the form: ${
-          error.response?.data?.message || error.message
-        }`
-      );
-      setShowAlert(true);
-    } finally {
-      setLoading(false);
+      const date = new Date(value);
+      if (isNaN(date.getTime())) return null;
+      return date.toISOString().split("T")[0];
+    } catch {
+      return null;
     }
   };
+
+  // ----- पूरा transformedData (सभी फ़ील्ड्स) -----
+  const transformedData = {
+    student: {
+      first_name: data.student.first_name || "",
+      middle_name: handleOptionalField(data.student.middle_name),
+      last_name: handleOptionalField(data.student.last_name),
+      email: data.student.email || "",
+      father_name: handleOptionalField(data.student.father_name),
+      mother_name: handleOptionalField(data.student.mother_name),
+      date_of_birth: handleDateField(data.student.date_of_birth),
+      gender: handleOptionalField(data.student.gender),
+      religion: handleOptionalField(data.student.religion),
+      category: handleOptionalField(data.student.category),
+      height: handleOptionalNumber(data.student.height),
+      weight: handleOptionalNumber(data.student.weight),
+      blood_group: handleOptionalField(data.student.blood_group),
+      number_of_siblings: handleOptionalInteger(data.student.number_of_siblings) || 0,
+      scholar_number: handleOptionalField(data.student.scholar_number),
+      aadhaar_number: handleOptionalField(data.student.aadhaar_number),
+      FMID_number: handleOptionalField(data.student.FMID_number),
+      apaar_number: handleOptionalField(data.student.apaar_number),
+      PEN_number: handleOptionalField(data.student.PEN_number),
+      BPL_number: handleOptionalField(data.student.BPL_number),
+      SSSMID: handleOptionalField(data.student.SSSMID),
+      class_section: handleOptionalField(data.class_section),
+      is_active: data.student.is_active || "true",
+    },
+    guardian: {
+      first_name: handleOptionalField(data.guardian.first_name),
+      middle_name: handleOptionalField(data.guardian.middle_name),
+      last_name: handleOptionalField(data.guardian.last_name),
+      email: handleOptionalField(data.guardian.email),
+      phone_no: handleOptionalField(data.guardian.phone_no),
+      annual_income: handleOptionalNumber(data.guardian.annual_income) || null,
+      means_of_livelihood: data.guardian.means_of_livelihood ? data.guardian.means_of_livelihood : null,
+      qualification: handleOptionalField(data.guardian.qualification),
+      occupation: handleOptionalField(data.guardian.occupation),
+      designation: handleOptionalField(data.guardian.designation),
+    },
+    address_input: {
+      house_no: handleOptionalInteger(data.address_input.house_no),
+      habitation: handleOptionalField(data.address_input.habitation),
+      ward_no: handleOptionalInteger(data.address_input.ward_no),
+      zone_no: handleOptionalInteger(data.address_input.zone_no),
+      block: handleOptionalField(data.address_input.block),
+      district: handleOptionalField(data.address_input.district),
+      division: handleOptionalField(data.address_input.division),
+      area_code: handleOptionalInteger(data.address_input.area_code),
+      country: handleOptionalField(data.address_input.country),
+      state: handleOptionalField(data.address_input.state),
+      city: handleOptionalField(data.address_input.city),
+      address_line: handleOptionalField(data.address_input.address_line),
+    },
+    banking_detail_input: {
+      account_no: handleOptionalInteger(data.banking_detail_input.account_no),
+      ifsc_code: handleOptionalField(data.banking_detail_input.ifsc_code),
+      holder_name: handleOptionalField(data.banking_detail_input.holder_name),
+      bank_name: handleOptionalField(data.banking_detail_input.bank_name),
+    },
+    guardian_type_input: handleOptionalField(data.guardian_type_input),
+    year_level: handleOptionalField(data.year_level),
+    school_year: handleOptionalField(data.school_year),
+    admission_date: handleDateField(data.admission_date),
+    previous_school_name: handleOptionalField(data.previous_school_name),
+    previous_standard_studied: handleOptionalField(data.previous_standard_studied),
+    tc_letter: handleOptionalField(data.tc_letter),
+    emergency_contact_no: handleOptionalField(data.emergency_contact_no),
+    entire_road_distance_from_home_to_school: handleOptionalField(data.entire_road_distance_from_home_to_school),
+    obtain_marks: handleOptionalNumber(data.obtain_marks),
+    total_marks: handleOptionalNumber(data.total_marks),
+    previous_percentage: handleOptionalNumber(data.previous_percentage),
+    is_rte: data.is_rte || false,
+    rte_number: data.is_rte ? handleOptionalField(data.rte_number) : null,
+    enrollment_no: handleOptionalField(data.enrollment_no),
+  };
+
+  // ----- Required fields paths (dot notation) -----
+  const requiredFieldPaths = [
+    'student.first_name',
+    'student.email',
+    'student.is_active',
+    'school_year',
+    'previous_school_name',
+    'previous_standard_studied',
+    'tc_letter',
+    'emergency_contact_no',
+    'entire_road_distance_from_home_to_school',
+    'obtain_marks',
+    'total_marks',
+    'address_input.country',
+    'address_input.state',
+    'address_input.city',
+  ];
+
+  // अगर RTE है तो rte_number भी required है
+  if (data.is_rte) {
+    requiredFieldPaths.push('rte_number');
+  }
+
+  // ----- Helper: nested value extractor -----
+  const getNestedValue = (obj, path) => {
+    return path.split('.').reduce((o, key) => (o && o[key] !== undefined) ? o[key] : undefined, obj);
+  };
+
+  // ----- requiredData बनाएँ (सिर्फ required fields) -----
+  const requiredData = {};
+  requiredFieldPaths.forEach(path => {
+    const value = getNestedValue(transformedData, path);
+    if (value !== undefined) { // include even if null, but skip undefined
+      const keys = path.split('.');
+      let current = requiredData;
+      for (let i = 0; i < keys.length - 1; i++) {
+        const key = keys[i];
+        if (!current[key]) current[key] = {};
+        current = current[key];
+      }
+      current[keys[keys.length - 1]] = value;
+    }
+  });
+
+  // ----- Filter: केवल dirty fields -----
+  const filterByDirty = (obj, dirty) => {
+    if (typeof dirty === 'boolean') {
+      return dirty ? obj : undefined;
+    }
+    if (obj === null || typeof obj !== 'object') return undefined;
+    const result = {};
+    Object.keys(dirty).forEach((key) => {
+      const childObj = obj[key];
+      const childDirty = dirty[key];
+      if (childDirty !== undefined) {
+        const filtered = filterByDirty(childObj, childDirty);
+        if (filtered !== undefined) {
+          result[key] = filtered;
+        }
+      }
+    });
+    return Object.keys(result).length > 0 ? result : undefined;
+  };
+
+  const dirtyTransformed = filterByDirty(transformedData, dirtyFields) || {};
+
+  // ----- Deep merge requiredData और dirtyTransformed (dirty को priority) -----
+  const deepMerge = (target, source) => {
+    const output = { ...target };
+    if (source && typeof source === 'object') {
+      Object.keys(source).forEach(key => {
+        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+          if (!output[key]) output[key] = {};
+          output[key] = deepMerge(output[key], source[key]);
+        } else {
+          output[key] = source[key];
+        }
+      });
+    }
+    return output;
+  };
+
+  const finalData = deepMerge(requiredData, dirtyTransformed);
+
+  // ----- FormData बनाएँ (सिर्फ finalData से) -----
+  const submitFormData = new FormData();
+  Object.entries(finalData).forEach(([key, value]) => {
+    if (typeof value === 'object' && value !== null) {
+      Object.entries(value).forEach(([subKey, subValue]) => {
+        if (subValue !== null && subValue !== undefined) {
+          submitFormData.append(`${key}[${subKey}]`, subValue);
+        }
+      });
+    } else if (value !== null && value !== undefined) {
+      submitFormData.append(key, value);
+    }
+  });
+
+  // (Optional) Debug log 
+  // for (let pair of submitFormData.entries()) {
+  //   console.log(pair[0] + ': ' + pair[1]);
+  // }
+
+  // ----- API Call -----
+  try {
+    await handleEditAdmissionForm(submitFormData, id);
+    setShowEditSuccessModal(true);
+  } catch (error) {
+    console.error("Update error:", error.response?.data || error.message);
+    setAlertMessage(
+      `Failed to update the form: ${error.response?.data?.message || error.message}`
+    );
+    setShowAlert(true);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const filteredCities = city
     .filter((c) => c.name.toLowerCase().includes(citySearchInput.toLowerCase()))

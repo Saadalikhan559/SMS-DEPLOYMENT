@@ -22,7 +22,14 @@ export const ViewFeesDetails = () => {
       const response = await axiosInstance.get(
         `/d/studentfees/grouped_receipts/?student_year_id=${id}&receipt_number=${receipt_number}`,
       );
-      setFeeSummary(response.data[0] || {});
+      const data = response.data;
+      // New response structure: { count, next, previous, results: [...] }
+      if (data && data.results && data.results.length > 0) {
+        setFeeSummary(data.results[0]);
+      } else {
+        setFeeSummary({});
+        setError("No fee record found for this student.");
+      }
     } catch (err) {
       console.log(err);
       setError("Failed to load fee details. Please try again.");
@@ -33,7 +40,7 @@ export const ViewFeesDetails = () => {
 
   useEffect(() => {
     getFeeSummaryData();
-  }, [id]);
+  }, [id, receipt_number]); // include receipt_number as dependency
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -63,10 +70,7 @@ export const ViewFeesDetails = () => {
     setDownloading(true);
 
     try {
-      // wait for DOM to fully render
       await new Promise((resolve) => setTimeout(resolve, 300));
-
-      // Capture receipt as PNG
       const dataUrl = await toPng(receiptRef.current, {
         quality: 1,
         pixelRatio: 3,
@@ -77,33 +81,24 @@ export const ViewFeesDetails = () => {
         },
       });
 
-      // Create PDF (A4)
       const pdf = new jsPDF("p", "mm", "a4");
-
       const imgProps = pdf.getImageProperties(dataUrl);
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-
       const margin = 10;
 
-      // Scale image to fit A4 while keeping aspect ratio
       let imgWidth = pageWidth - margin * 2;
       let imgHeight = (imgProps.height * imgWidth) / imgProps.width;
 
-      // If height overflows page, scale down
       if (imgHeight > pageHeight - margin * 2) {
         imgHeight = pageHeight - margin * 2;
         imgWidth = (imgProps.width * imgHeight) / imgProps.height;
       }
 
-      // Center horizontally
       const x = (pageWidth - imgWidth) / 2;
       const y = margin;
 
-      // Add image to PDF
       pdf.addImage(dataUrl, "PNG", x, y, imgWidth, imgHeight);
-
-      // Save PDF
       pdf.save(`receipt_${feeSummary.receipt_number || id}.pdf`);
     } catch (error) {
       console.error("PDF download failed:", error);
@@ -121,6 +116,26 @@ export const ViewFeesDetails = () => {
           <div className="w-3 h-3 bgTheme rounded-full animate-bounce [animation-delay:-0.4s]"></div>
         </div>
         <p className="mt-2 text-gray-500 text-sm">Loading data...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="bg-red-100 text-red-700 p-4 rounded shadow">
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!feeSummary || Object.keys(feeSummary).length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="bg-yellow-100 text-yellow-700 p-4 rounded shadow">
+          <p>No fee details available for this receipt.</p>
+        </div>
       </div>
     );
   }
@@ -314,6 +329,7 @@ export const ViewFeesDetails = () => {
           </p>
         </div>
       </div>
+
       {/* Action Buttons */}
       <div className="max-w-xl mx-auto flex justify-end gap-3 mb-24 md:mb-20 mt-3">
         <button
@@ -321,7 +337,7 @@ export const ViewFeesDetails = () => {
           disabled={downloading}
           className="btn bgTheme text-white"
         >
-          {downloading ? "Saving..." : "Save"}
+          {downloading ? "Saving" : "Save & Print"}
         </button>
       </div>
     </div>
