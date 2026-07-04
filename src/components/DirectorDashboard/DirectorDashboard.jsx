@@ -8,6 +8,7 @@ import {
 import LoginSuccessHandler from "../Modals/LoginSucces";
 import { constants } from "../../global/constants";
 import { Loader } from "../../global/Loader";
+import { useNavigate } from "react-router-dom";
 
 export const DirectorDashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -17,6 +18,7 @@ export const DirectorDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const height = 400;
+  const navigate = useNavigate();
 
   const loadAllDashboardData = async () => {
     try {
@@ -58,29 +60,29 @@ export const DirectorDashboard = () => {
     return () => observer.disconnect();
   }, []);
 
-const classOrder = [
-  "Pre Nursery",
-  "Nursery",
-  "KG 1",
-  "KG 2",
-  "Class 1",
-  "Class 2",
-  "Class 3",
-  "Class 4",
-  "Class 5",
-  "Class 6",
-  "Class 7",
-  "Class 8",
-  "Class 9",
-  "Class 10",
-  "Class 11",
-  "Class 12",
-];
+  const classOrder = [
+    "Pre Nursery",
+    "Nursery",
+    "KG 1",
+    "KG 2",
+    "Class 1",
+    "Class 2",
+    "Class 3",
+    "Class 4",
+    "Class 5",
+    "Class 6",
+    "Class 7",
+    "Class 8",
+    "Class 9",
+    "Class 10",
+    "Class 11",
+    "Class 12",
+  ];
 
-const classStrength = dashboardData?.class_strength || {};
+  const classStrength = dashboardData?.class_strength || {};
 
-const sortedClasses = classOrder.filter(c => classStrength.hasOwnProperty(c));
-const sortedData = sortedClasses.map(c => classStrength[c]);
+  const sortedClasses = classOrder.filter(c => classStrength.hasOwnProperty(c));
+  const sortedData = sortedClasses.map(c => classStrength[c]);
 
 
 
@@ -139,9 +141,21 @@ const sortedData = sortedClasses.map(c => classStrength[c]);
       {/* SUMMARY CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         {Object.entries(dashboardData.summary || {}).map(([key, value]) => (
+          // <div
+          //   key={key}
+          //   className="border rounded-lg shadow-lg overflow-hidden transition-all hover:shadow-xl borderTheme bg-white dark:bg-gray-800 dark:border-gray-700"
+          // >
           <div
             key={key}
-            className="border rounded-lg shadow-lg overflow-hidden transition-all hover:shadow-xl borderTheme bg-white dark:bg-gray-800 dark:border-gray-700"
+            onClick={() => {
+              if (key === "new_admissions") {
+                navigate("/newAdmissionList");
+              }
+            }}
+            className={`border rounded-lg shadow-lg overflow-hidden borderTheme bg-white dark:bg-gray-800 dark:border-gray-700 transition-all ${key === "new_admissions"
+                ? "cursor-pointer hover:shadow-2xl hover:-translate-y-1 hover:scale-105"
+                : ""
+              }`}
           >
             <div className="p-4 bgTheme text-white text-center">
               <h2 className="text-xl font-bold capitalize">
