@@ -1,5 +1,11 @@
 import React, { useContext, useEffect, useState, useRef } from "react";
-import { fetchAdmissionDetails, fetchYearLevels } from "../../services/api/Api";
+import {
+  fetchAdmissionDetails,
+  fetchYearLevels,
+  deactivateStudents,
+  fetchInactiveStudents,
+  reactivateStudents,
+} from "../../services/api/Api";
 import { Link } from "react-router-dom";
 import { allRouterLink } from "../../router/AllRouterLinks";
 import { AuthContext } from "../../context/AuthContext";
@@ -25,15 +31,27 @@ export const AdmissionDetails = () => {
   const [offset, setOffset] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
 
-  // Helper: safely format date
+  // ---------- Deactivate / Reactivate States ----------
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const [resultModal, setResultModal] = useState(null);
+
+  const [showInactiveModal, setShowInactiveModal] = useState(false);
+  const [inactiveStudents, setInactiveStudents] = useState([]);
+  const [inactiveLoading, setInactiveLoading] = useState(false);
+  const [reactivatingId, setReactivatingId] = useState(null);
+
+  // ---------- Helper Functions ----------
   const formatDate = (dateStr) => {
     if (!dateStr || dateStr === "N/A" || dateStr === "null") return "";
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return "";
-    return d.toLocaleDateString("en-GB").replaceAll("/", "-"); // DD-MM-YYYY
+    return d.toLocaleDateString("en-GB").replaceAll("/", "-");
   };
 
-  // Click outside for dropdown
+  // ---------- Click outside for dropdown ----------
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -44,17 +62,17 @@ export const AdmissionDetails = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Fetch admission details with pagination
+  // ---------- Fetch admission details (paginated) ----------
   const getAdmissionDetails = async (offsetVal = offset) => {
     try {
       setLoading(true);
       const params = {
         limit: LIMIT,
         offset: offsetVal,
-        // Agar backend date range accept kare toh yeh add karein:
+        // Add filters if API supports them:
+        // class: selectedClass,
         // from_date: fromDate,
         // to_date: toDate,
-        // class: selectedClass,
         // search: searchInput,
       };
       const res = await axiosInstance.get("s/students/student_details/", { params });
@@ -69,7 +87,7 @@ export const AdmissionDetails = () => {
     }
   };
 
-  // Fetch all pages for download
+  // ---------- Fetch all pages for download ----------
   const fetchAllStudentData = async () => {
     let allData = [];
     let currentOffset = 0;
@@ -91,6 +109,7 @@ export const AdmissionDetails = () => {
     return allData;
   };
 
+  // ---------- Fetch Year Levels ----------
   const getYearLevels = async () => {
     try {
       const data = await fetchYearLevels();
@@ -100,6 +119,7 @@ export const AdmissionDetails = () => {
     }
   };
 
+  // ---------- Initial load ----------
   useEffect(() => {
     getYearLevels();
     getAdmissionDetails(0);
@@ -109,6 +129,7 @@ export const AdmissionDetails = () => {
     getAdmissionDetails(offset);
   }, [offset]);
 
+  // ---------- Reset filters ----------
   const resetFilters = () => {
     setSelectedClass("");
     setFromDate("");
@@ -117,7 +138,7 @@ export const AdmissionDetails = () => {
     setOffset(0);
   };
 
-  // Normalization for downloads (flat to flat)
+  // ---------- Normalize for downloads ----------
   const normalizeStudents = (data) => {
     if (!data) return [];
     if (Array.isArray(data)) return data;
@@ -126,7 +147,7 @@ export const AdmissionDetails = () => {
     return [];
   };
 
-  // Download handlers (using flat data)
+  // ---------- Download Handlers ----------
   const handleDownloadExcel = async () => {
     const fullData = await fetchAllStudentData();
     const data = normalizeStudents(fullData);
@@ -287,7 +308,87 @@ export const AdmissionDetails = () => {
     doc.save("Student_Details_Report.pdf");
   };
 
-  // Loading / Error
+  // ---------- DELETE / DEACTIVATE ----------
+  const handleDeleteClick = (detail) => {
+    setStudentToDelete(detail);
+    setShowDeleteModal(true);
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setStudentToDelete(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!studentToDelete) return;
+    setDeleteLoading(true);
+    try {
+      const studentId = studentToDelete.student_id ?? studentToDelete.id;
+      await deactivateStudents([studentId]);
+      await getAdmissionDetails(offset); // refresh current page
+      setShowDeleteModal(false);
+      setStudentToDelete(null);
+      setResultModal({
+        type: "success",
+        message: "Student has been deactivated successfully.",
+      });
+    } catch (error) {
+      setShowDeleteModal(false);
+      setStudentToDelete(null);
+      setResultModal({
+        type: "error",
+        message: "Failed to deactivate student. Please try again.",
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // ---------- INACTIVE & REACTIVATE ----------
+  const getInactiveStudents = async () => {
+    setInactiveLoading(true);
+    try {
+      const data = await fetchInactiveStudents();
+      setInactiveStudents(data);
+    } catch (err) {
+      console.error("Failed to fetch inactive students:", err);
+      setInactiveStudents([]);
+    } finally {
+      setInactiveLoading(false);
+    }
+  };
+
+  const handleInactiveClick = () => {
+    setShowInactiveModal(true);
+    getInactiveStudents();
+  };
+
+  const handleReactivate = async (studentId) => {
+    setReactivatingId(studentId);
+    try {
+      await reactivateStudents([studentId]);
+      // Remove from local list
+      setInactiveStudents((prev) =>
+        prev.filter((s) => (s.id ?? s.student_id) !== studentId)
+      );
+      // Refresh main list
+      await getAdmissionDetails(offset);
+      setResultModal({
+        type: "success",
+        message: "Student has been reactivated successfully.",
+      });
+    } catch (err) {
+      console.error("Reactivation failed:", err);
+      setResultModal({
+        type: "error",
+        message: "Failed to reactivate student. Please try again.",
+      });
+    } finally {
+      setReactivatingId(null);
+    }
+  };
+
+  // ---------- Loading / Error States ----------
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center p-6">
@@ -334,23 +435,183 @@ export const AdmissionDetails = () => {
     return matchesClass && matchesDateRange;
   });
 
-  // Search filter
   const filterBySearch = filterData.filter((detail) => {
     const search = searchInput.toLowerCase();
     const studentName = (detail.student_name ?? "").toLowerCase();
     return studentName.startsWith(search);
   });
 
-  // Sort
   const sortedData = [...filterBySearch].sort((a, b) => {
     const nameA = (a.student_name ?? "").toLowerCase();
     const nameB = (b.student_name ?? "").toLowerCase();
     return nameA.localeCompare(nameB);
   });
 
-  // ---------- Render ----------
+  // ---------- Main Render ----------
   return (
     <div className="p-6 bg-gray-100 dark:bg-gray-900 min-h-screen mb-24 md:mb-10">
+      {/* ---------- DELETE CONFIRM MODAL ---------- */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-sm shadow-md">
+            <h2 className="text-lg font-semibold mb-3 dark:text-gray-100">
+              Deactivate Student
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Are you sure you want to deactivate this student?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={handleCancelDelete}
+                disabled={deleteLoading}
+                className="btn btnThemeOutline items-center"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={deleteLoading}
+                className="btn bgTheme text-white flex items-center"
+              >
+                {deleteLoading ? "Deactivating..." : "Deactivate"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---------- RESULT MODAL ---------- */}
+      {resultModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-sm shadow-md">
+            <div className="flex justify-center mb-4">
+              {resultModal.type === "success" ? (
+                <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
+                  <i className="fa-solid fa-circle-check text-green-500 text-3xl"></i>
+                </div>
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center">
+                  <i className="fa-solid fa-circle-xmark text-red-500 text-3xl"></i>
+                </div>
+              )}
+            </div>
+            <h2
+              className={`text-lg font-semibold text-center mb-2 ${
+                resultModal.type === "success" ? "text-green-700" : "text-red-700"
+              }`}
+            >
+              {resultModal.type === "success" ? "Success!" : "Failed!"}
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 text-center text-sm mb-5">
+              {resultModal.message}
+            </p>
+            <div className="flex justify-center">
+              <button
+                onClick={() => setResultModal(null)}
+                className={`btn text-white px-8 ${
+                  resultModal.type === "success"
+                    ? "bg-green-500 hover:bg-green-600"
+                    : "bg-red-500 hover:bg-red-600"
+                }`}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---------- INACTIVE STUDENTS MODAL ---------- */}
+      {showInactiveModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                <i className="fa-solid fa-user-slash text-red-500"></i>
+                Inactive Students
+              </h2>
+              <button
+                onClick={() => setShowInactiveModal(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              >
+                <i className="fa-solid fa-xmark text-gray-500 dark:text-gray-300"></i>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {inactiveLoading ? (
+                <div className="flex flex-col items-center justify-center py-10">
+                  <div className="flex space-x-2">
+                    <div className="w-2.5 h-2.5 bgTheme rounded-full animate-bounce"></div>
+                    <div className="w-2.5 h-2.5 bgTheme rounded-full animate-bounce [animation-delay:-0.2s]"></div>
+                    <div className="w-2.5 h-2.5 bgTheme rounded-full animate-bounce [animation-delay:-0.4s]"></div>
+                  </div>
+                  <p className="mt-2 text-gray-500 text-sm">Loading...</p>
+                </div>
+              ) : inactiveStudents.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10">
+                  <i className="fa-solid fa-face-smile text-4xl text-green-400 mb-3"></i>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">
+                    No inactive students found.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {inactiveStudents.map((student) => {
+                    const id = student.id ?? student.student_id;
+                    const name = student.name || "Unknown";
+                    return (
+                      <div
+                        key={id}
+                        className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg px-4 py-3 border border-gray-200 dark:border-gray-600"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                            <i className="fa-solid fa-user text-red-500 text-sm"></i>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
+                              {name}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleReactivate(id)}
+                          disabled={reactivatingId === id}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition flex-shrink-0 ${
+                            reactivatingId === id
+                              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                              : "bg-green-50 text-green-700 border border-green-300 hover:bg-green-100"
+                          }`}
+                        >
+                          {reactivatingId === id ? (
+                            <>
+                              <i className="fa-solid fa-spinner animate-spin"></i>
+                              Wait...
+                            </>
+                          ) : (
+                            <>
+                              <i className="fa-solid fa-rotate-left"></i>
+                              Reactivate
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-xs text-gray-400 text-center">
+                {inactiveStudents.length} inactive student(s)
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---------- MAIN CONTAINER ---------- */}
       <div className="max-w-7xl mx-auto bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
         <div className="mb-6">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 text-center mb-4 border-gray-200 dark:border-gray-700">
@@ -358,7 +619,7 @@ export const AdmissionDetails = () => {
           </h1>
         </div>
 
-        {/* Filters */}
+        {/* Filters and Download */}
         <div className="w-full px-5">
           <div className="flex flex-wrap justify-between items-end gap-4 mb-6 w-full border-b border-gray-300 dark:border-gray-700 pb-4">
             <div className="flex flex-wrap items-end gap-4 w-full sm:w-auto">
@@ -442,7 +703,7 @@ export const AdmissionDetails = () => {
               </div>
             </div>
 
-            {/* Search */}
+            {/* Search and Inactive Icon */}
             <div className="flex items-end gap-2 w-full sm:w-auto justify-end">
               <div className="flex flex-col w-full sm:w-auto">
                 <input
@@ -453,6 +714,14 @@ export const AdmissionDetails = () => {
                   onChange={(e) => setSearchInput(e.target.value.trimStart())}
                 />
               </div>
+              {/* Inactive Students Icon */}
+              <button
+                onClick={handleInactiveClick}
+                title="View Inactive Students"
+                className="w-10 h-10 flex items-center justify-center rounded-lg border border-red-300 bg-red-50 hover:bg-red-100 text-red-600 transition flex-shrink-0"
+              >
+                <i className="fa-solid fa-user-slash text-sm"></i>
+              </button>
             </div>
           </div>
         </div>
@@ -529,6 +798,13 @@ export const AdmissionDetails = () => {
                             >
                               View
                             </Link>
+                            {/* Deactivate Button */}
+                            <button
+                              onClick={() => handleDeleteClick(detail)}
+                              className="inline-flex items-center px-3 py-1 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 transition"
+                            >
+                              Deactivate
+                            </button>
                           </div>
                         </td>
                       </tr>

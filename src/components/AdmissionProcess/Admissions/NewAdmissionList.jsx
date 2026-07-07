@@ -19,6 +19,7 @@ const NewAdmissionList = () => {
   const [offset, setOffset] = useState(0);
 
   const [showDownloadOptions, setShowDownloadOptions] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const dropdownRef = useRef(null);
 
@@ -30,10 +31,7 @@ const NewAdmissionList = () => {
   // Close dropdown on outside click
   useEffect(() => {
     const close = (e) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target)
-      ) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setShowDownloadOptions(false);
       }
     };
@@ -42,7 +40,9 @@ const NewAdmissionList = () => {
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  // Fetch admissions
+  // ------------------------------------------------------------
+  // FETCH ADMISSIONS (current page) – FIXED
+  // ------------------------------------------------------------
   const getAdmissions = async () => {
     try {
       setLoading(true);
@@ -56,8 +56,9 @@ const NewAdmissionList = () => {
         params,
       });
 
-      setStudents(res.data.results.results || []);
-      setSchoolYear(res.data.results.school_year || "");
+      // ✅ CORRECT: data.results is the array, data.school_year is at the root
+      setStudents(res.data.results || []);
+      setSchoolYear(res.data.school_year || "");
       setCount(res.data.count || 0);
       setError(false);
     } catch (err) {
@@ -82,7 +83,9 @@ const NewAdmissionList = () => {
 
   // Filter students (search + class)
   const filteredStudents = students.filter((student) => {
-    const fullName = `${student.student_input?.first_name || ""} ${student.student_input?.middle_name || ""} ${student.student_input?.last_name || ""}`.toLowerCase();
+    const fullName = `${student.student_input?.first_name || ""} ${
+      student.student_input?.middle_name || ""
+    } ${student.student_input?.last_name || ""}`.toLowerCase();
 
     const search = filters.search.toLowerCase();
 
@@ -93,21 +96,61 @@ const NewAdmissionList = () => {
         .includes(search);
 
     const matchesClass =
-      !filters.year_level ||
-      student.year_level === filters.year_level;
+      !filters.year_level || student.year_level === filters.year_level;
 
     return matchesSearch && matchesClass;
   });
 
-  // ------------------------------------------------------------------
-  // SIMPLIFIED normalizeStudents – only UI‑visible fields
-  // ------------------------------------------------------------------
+  // ------------------------------------------------------------
+  // FETCH ALL DATA FOR DOWNLOAD – FIXED
+  // ------------------------------------------------------------
+  const fetchAllAdmissions = async () => {
+    try {
+      const res = await axiosInstance.get("d/new-admission/"); // no params → all records
+      // ✅ CORRECT: data.results is the array
+      return res.data.results || [];
+    } catch (err) {
+      console.error("Error fetching all admissions:", err);
+      alert("Failed to load complete data. Please try again.");
+      return [];
+    }
+  };
+
+  // ------------------------------------------------------------
+  // UNIFIED DOWNLOAD HANDLER
+  // ------------------------------------------------------------
+  const handleDownload = async (type) => {
+    setShowDownloadOptions(false);
+    setIsDownloading(true);
+
+    try {
+      const allStudents = await fetchAllAdmissions();
+      if (!allStudents.length) {
+        alert("No data to export.");
+        return;
+      }
+
+      if (type === "pdf") {
+        handleDownloadStudentDataPDF(allStudents);
+      } else if (type === "excel") {
+        handleDownloadExcel(allStudents);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Export failed.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // ------------------------------------------------------------
+  // NORMALIZE STUDENTS – UI‑visible fields
+  // ------------------------------------------------------------
   const normalizeStudents = (students) => {
     return students.map((student) => {
       const s = student.student_input || {};
       const g = student.guardian_input || {};
 
-      // Build full name from first, middle, last
       const nameParts = [s.first_name, s.middle_name, s.last_name]
         .filter(Boolean)
         .join(" ");
@@ -125,9 +168,9 @@ const NewAdmissionList = () => {
     });
   };
 
-  // ------------------------------------------------------------------
-  // EXCEL export (uses simplified data)
-  // ------------------------------------------------------------------
+  // ------------------------------------------------------------
+  // EXCEL EXPORT
+  // ------------------------------------------------------------
   const handleDownloadExcel = (input = []) => {
     const data = normalizeStudents(input);
     if (!data.length) {
@@ -135,7 +178,6 @@ const NewAdmissionList = () => {
       return;
     }
 
-    // Format for Excel – columns as per UI
     const formattedData = data.map((s) => ({
       ID: s.id,
       "Roll No": s.roll_number,
@@ -156,9 +198,9 @@ const NewAdmissionList = () => {
     XLSX.writeFile(workbook, "New_Admissions_Report.xlsx");
   };
 
-  // ------------------------------------------------------------------
-  // PDF export (simplified, landscape A3 – same columns)
-  // ------------------------------------------------------------------
+  // ------------------------------------------------------------
+  // PDF EXPORT (landscape A3)
+  // ------------------------------------------------------------
   const handleDownloadStudentDataPDF = (input = []) => {
     const data = normalizeStudents(input);
     if (!data.length) {
@@ -171,13 +213,14 @@ const NewAdmissionList = () => {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
 
-    // Header
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text("New Admission List Report", margin, 12);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth - margin, 12, { align: "right" });
+    doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth - margin, 12, {
+      align: "right",
+    });
     doc.text(`School Year: ${schoolYear}`, margin, 18);
 
     const body = data.map((s) => [
@@ -195,10 +238,18 @@ const NewAdmissionList = () => {
       startY: 22,
       theme: "grid",
       showHead: "everyPage",
-      head: [[
-        "ID", "Roll No", "Student Name", "Father's Name",
-        "Class", "Mobile", "Admission Date", "Previous School"
-      ]],
+      head: [
+        [
+          "ID",
+          "Roll No",
+          "Student Name",
+          "Father's Name",
+          "Class",
+          "Mobile",
+          "Admission Date",
+          "Previous School",
+        ],
+      ],
       body,
       margin: { top: 20, left: margin, right: margin },
       styles: {
@@ -239,9 +290,9 @@ const NewAdmissionList = () => {
     doc.save("New_Admissions_Report.pdf");
   };
 
-  // ------------------------------------------------------------------
-  // LOADING / ERROR states
-  // ------------------------------------------------------------------
+  // ------------------------------------------------------------
+  // LOADING / ERROR STATES
+  // ------------------------------------------------------------
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
@@ -264,9 +315,9 @@ const NewAdmissionList = () => {
     );
   }
 
-  // ------------------------------------------------------------------
+  // ------------------------------------------------------------
   // MAIN RENDER
-  // ------------------------------------------------------------------
+  // ------------------------------------------------------------
   return (
     <div className="p-6 bg-gray-100 dark:bg-gray-900 min-h-screen mb-24 md:mb-10">
       <div className="max-w-7xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
@@ -301,10 +352,7 @@ const NewAdmissionList = () => {
                 ))}
               </select>
 
-              <button
-                className="btn bgTheme text-white"
-                onClick={resetFilters}
-              >
+              <button className="btn bgTheme text-white" onClick={resetFilters}>
                 Reset
               </button>
 
@@ -313,28 +361,25 @@ const NewAdmissionList = () => {
                 <button
                   className="btn bgTheme text-white"
                   onClick={() => setShowDownloadOptions(!showDownloadOptions)}
+                  disabled={isDownloading}
                 >
                   <i className="fa-solid fa-download mr-2"></i>
-                  Download New Admissions List
+                  {isDownloading ? "Loading..." : "Download New Admissions List"}
                 </button>
 
                 {showDownloadOptions && (
                   <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-gray-800 rounded-md shadow-lg z-20 border border-gray-200 dark:border-gray-700">
                     <button
-                      onClick={() => {
-                        handleDownloadStudentDataPDF(filteredStudents);
-                        setShowDownloadOptions(false);
-                      }}
+                      onClick={() => handleDownload("pdf")}
                       className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600"
+                      disabled={isDownloading}
                     >
                       PDF
                     </button>
                     <button
-                      onClick={() => {
-                        handleDownloadExcel(filteredStudents);
-                        setShowDownloadOptions(false);
-                      }}
+                      onClick={() => handleDownload("excel")}
                       className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600"
+                      disabled={isDownloading}
                     >
                       Excel
                     </button>
