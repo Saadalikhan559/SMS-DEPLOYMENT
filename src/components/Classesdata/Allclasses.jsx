@@ -16,18 +16,21 @@ const Allclasses = () => {
 
     try {
       const data = await fetchYearLevels();
+
       const withCounts = await Promise.all(
         data.map(async (level) => {
           try {
-            const students = await fetchStudentYearLevelByClass(level.id);
-            // Filter students by session if not "All"
-            const filteredStudents =
-              selectedSession !== "All"
-                ? students.filter((student) => student.year_name === selectedSession)
-                : students;
+            let students;
+            
+            if (selectedSession !== "All") {
+              students = await fetchStudentYearLevelByClass(level.id, selectedSession);
+            } else {
+              students = await fetchStudentYearLevelByClass(level.id);
+            }
+
             return {
               ...level,
-              student_count: filteredStudents.length,
+              student_count: students.length,
             };
           } catch (err) {
             console.error(`Error fetching students for level ${level.id}:`, err);
@@ -48,7 +51,6 @@ const Allclasses = () => {
     }
   };
 
-  // Re-fetch when session changes
   useEffect(() => {
     getYearLevels();
   }, [selectedSession]);
@@ -84,7 +86,6 @@ const Allclasses = () => {
             All Year Levels
           </h1>
 
-          {/* Session filter dropdown */}
           <div className="flex items-center gap-2 mt-2 sm:mt-0">
             <label htmlFor="sessionFilter" className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Session:
@@ -132,7 +133,10 @@ const Allclasses = () => {
                     <td className="px-4 py-3 font-bold text-nowrap text-center capitalize">
                       <Link
                         to={`/allStudentsPerClass/${record.id}`}
-                        state={{ level_name: record.level_name }}
+                        state={{ 
+                          level_name: record.level_name,
+                          session: selectedSession // 👈 Pass selected session here
+                        }}
                         className="textTheme hover:underline"
                       >
                         {record.level_name}
