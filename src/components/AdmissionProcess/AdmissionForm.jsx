@@ -159,7 +159,7 @@ export const AdmissionForm = () => {
   const selectedBankId = watch("banking_detail_input.bank_name");
   const obtainMarks = watch("obtain_marks");
   const totalMarks = watch("total_marks");
-  
+
   useEffect(() => {
     if (selectedBankId && bankNames.length) {
       const b = bankNames.find((x) => String(x.id) === String(selectedBankId));
@@ -168,25 +168,25 @@ export const AdmissionForm = () => {
   }, [selectedBankId, bankNames]);
 
   useEffect(() => {
-  const getBankNames = async () => {
-    // ... existing code
-  };
-  getBankNames();
-}, []);
+    const getBankNames = async () => {
+      // ... existing code
+    };
+    getBankNames();
+  }, []);
 
-// NEW: Auto-calculate percentage
-useEffect(() => {
-  const obtain = parseFloat(obtainMarks);
-  const total = parseFloat(totalMarks);
+  // NEW: Auto-calculate percentage
+  useEffect(() => {
+    const obtain = parseFloat(obtainMarks);
+    const total = parseFloat(totalMarks);
 
-  if (!isNaN(obtain) && !isNaN(total) && total > 0) {
-    const percentage = (obtain / total) * 100;
-    const rounded = Math.round(percentage * 100) / 100;
-    setValue("previous_percentage", rounded, { shouldValidate: true });
-  } else {
-    setValue("previous_percentage", "", { shouldValidate: true });
-  }
-}, [obtainMarks, totalMarks, setValue]);
+    if (!isNaN(obtain) && !isNaN(total) && total > 0) {
+      const percentage = (obtain / total) * 100;
+      const rounded = Math.round(percentage * 100) / 100;
+      setValue("previous_percentage", rounded, { shouldValidate: true });
+    } else {
+      setValue("previous_percentage", "", { shouldValidate: true });
+    }
+  }, [obtainMarks, totalMarks, setValue]);
 
   const handleShowPassword = () => setShowPassword(!showPassword);
   const handleShowGuardianPassword = () =>
@@ -389,10 +389,10 @@ useEffect(() => {
         // No errors - show success message
         setBulkUploadSuccess(
           response.data?.message ||
-            "Bulk upload completed successfully!" +
-              (response.data?.created
-                ? ` Created: ${response.data.created} records`
-                : "")
+          "Bulk upload completed successfully!" +
+          (response.data?.created
+            ? ` Created: ${response.data.created} records`
+            : "")
         );
 
         // Reset after successful upload
@@ -538,8 +538,7 @@ useEffect(() => {
       setIsRTE(false);
     } catch (error) {
       setAlertMessage(
-        `Failed to submit the form: ${
-          error.response?.data?.message || error.message
+        `Failed to submit the form: ${error.response?.data?.message || error.message
         }`
       );
       setShowAlert(true);
@@ -748,9 +747,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder="First Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.first_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.first_name ? "input-error" : ""
+                  }`}
               />
               {errors.student?.first_name && (
                 <span className="text-error text-sm">
@@ -799,9 +797,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder="Last Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.last_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.last_name ? "input-error" : ""
+                  }`}
               />
               {errors.student?.last_name && (
                 <span className="text-error text-sm">
@@ -828,9 +825,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder="student@example.com"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.email ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.email ? "input-error" : ""
+                  }`}
               />
               {errors.student?.email && (
                 <span className="text-error text-sm">
@@ -861,9 +857,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder="eg : Password@123"
-                className={`input input-bordered w-full pr-10 focus:outline-none ${
-                  errors.student?.password ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full pr-10 focus:outline-none ${errors.student?.password ? "input-error" : ""
+                  }`}
               />
               <button
                 type="button"
@@ -871,9 +866,8 @@ useEffect(() => {
                 onClick={handleShowPassword}
               >
                 <i
-                  className={`fa-solid ${
-                    showPassword ? "fa-eye-slash" : "fa-eye"
-                  }`}
+                  className={`fa-solid ${showPassword ? "fa-eye-slash" : "fa-eye"
+                    }`}
                 ></i>
               </button>
               {errors.student?.password && (
@@ -904,9 +898,8 @@ useEffect(() => {
                     return true;
                   },
                 })}
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.date_of_birth ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.date_of_birth ? "input-error" : ""
+                  }`}
               />
               {errors.student?.date_of_birth && (
                 <span className="text-error text-sm">
@@ -924,9 +917,8 @@ useEffect(() => {
               </label>
               <select
                 {...register("student.gender")}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer ${
-                  errors.student?.gender ? "select-error" : ""
-                }`}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.student?.gender ? "select-error" : ""
+                  }`}
               >
                 <option value="">Select Gender</option>
                 <option value="Female">Female</option>
@@ -958,9 +950,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder="Father's Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.father_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.father_name ? "input-error" : ""
+                  }`}
               />
               {errors.student?.father_name && (
                 <span className="text-error text-sm">
@@ -984,9 +975,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder="Mother's Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.mother_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.mother_name ? "input-error" : ""
+                  }`}
               />
               {errors.student?.mother_name && (
                 <span className="text-error text-sm">
@@ -1010,9 +1000,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder="Religion"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.religion ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.religion ? "input-error" : ""
+                  }`}
               />
               {errors.student?.religion && (
                 <span className="text-error text-sm">
@@ -1031,9 +1020,8 @@ useEffect(() => {
               </label>
               <select
                 {...register("student.category")}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer ${
-                  errors.student?.category ? "select-error" : ""
-                }`}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.student?.category ? "select-error" : ""
+                  }`}
               >
                 <option value="">Select Category</option>
                 <option value="GEN">General</option>
@@ -1060,9 +1048,8 @@ useEffect(() => {
                   min: { value: 0, message: "Height must be positive" },
                 })}
                 placeholder="Height"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.height ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.height ? "input-error" : ""
+                  }`}
                 min={0} // prevents down arrow from going negative
                 onKeyDown={(e) => {
                   if (e.key === "-" || e.key === "e") e.preventDefault(); // prevents typing negative or 'e'
@@ -1089,9 +1076,8 @@ useEffect(() => {
                   min: { value: 0, message: "Weight must be positive" },
                 })}
                 placeholder="Weight"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.weight ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.weight ? "input-error" : ""
+                  }`}
               />
               {errors.student?.weight && (
                 <span className="text-error text-sm">
@@ -1317,27 +1303,6 @@ useEffect(() => {
                 </span>
               )}
             </div>
-            {/* Class Section */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text flex items-center gap-2">
-                  <i className="fa-solid fa-chalkboard-user text-sm"></i>
-                  Class Section
-                </span>
-              </label>
-
-              <select
-                {...register("student.class_section")}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer`}
-              >
-                <option value="">Select Section</option>
-                <option value="A">Section A</option>
-                <option value="B">Section B</option>
-                <option value="C">Section C</option>
-                <option value="D">Section D</option>
-              </select>
-            </div>
-
             {/* SSSMID */}
             <div className="form-control">
               <label className="label">
@@ -1398,9 +1363,8 @@ useEffect(() => {
                   if (value < 0) e.target.value = 0;
                   if (value > 15) e.target.value = 15;
                 }}
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.number_of_siblings ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.number_of_siblings ? "input-error" : ""
+                  }`}
               />
               {errors.student?.number_of_siblings && (
                 <span className="text-error text-sm">
@@ -1429,9 +1393,8 @@ useEffect(() => {
                     },
                   })}
                   placeholder="RTE Number"
-                  className={`input input-bordered w-full focus:outline-none ${
-                    errors.rte_number ? "input-error" : ""
-                  }`}
+                  className={`input input-bordered w-full focus:outline-none ${errors.rte_number ? "input-error" : ""
+                    }`}
                 />
                 {errors.rte_number && (
                   <span className="text-error text-sm">
@@ -1463,9 +1426,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder="First Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.first_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.first_name ? "input-error" : ""
+                  }`}
               />
               {errors.guardian?.first_name && (
                 <span className="text-error text-sm">
@@ -1513,9 +1475,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder="Last Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.last_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.last_name ? "input-error" : ""
+                  }`}
               />
               {errors.guardian?.last_name && (
                 <span className="text-error text-sm">
@@ -1541,9 +1502,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder="guardian@example.com"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.email ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.email ? "input-error" : ""
+                  }`}
               />
               {errors.guardian?.email && (
                 <span className="text-error text-sm">
@@ -1573,9 +1533,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder="eg: Password@123"
-                className={`input input-bordered w-full pr-10 focus:outline-none ${
-                  errors.guardian?.password ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full pr-10 focus:outline-none ${errors.guardian?.password ? "input-error" : ""
+                  }`}
               />
               <button
                 type="button"
@@ -1583,9 +1542,8 @@ useEffect(() => {
                 onClick={handleShowGuardianPassword}
               >
                 <i
-                  className={`fa-solid ${
-                    showGuardianPassword ? "fa-eye-slash" : "fa-eye"
-                  }`}
+                  className={`fa-solid ${showGuardianPassword ? "fa-eye-slash" : "fa-eye"
+                    }`}
                 ></i>
               </button>
               {errors.guardian?.password && (
@@ -1603,9 +1561,8 @@ useEffect(() => {
               </label>
               <select
                 {...register("guardian_type_input", {})}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer ${
-                  errors.guardian_type_input ? "select-error" : ""
-                }`}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.guardian_type_input ? "select-error" : ""
+                  }`}
                 value={selectedGuardianType}
                 onChange={handleGuardianTypesChange}
               >
@@ -1653,9 +1610,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder="Phone Number"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.phone_no ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.phone_no ? "input-error" : ""
+                  }`}
                 onInput={(e) => {
                   // Remove any non-digit characters
                   e.target.value = e.target.value.replace(/\D/g, "");
@@ -1719,9 +1675,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder="Annual Income"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.annual_income ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.annual_income ? "input-error" : ""
+                  }`}
               />
               {errors.guardian?.annual_income && (
                 <span className="text-error text-sm">
@@ -1761,9 +1716,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder="Qualification"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.qualification ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.qualification ? "input-error" : ""
+                  }`}
               />
               {errors.guardian?.qualification && (
                 <span className="text-error text-sm">
@@ -1789,9 +1743,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder="Occupation"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.occupation ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.occupation ? "input-error" : ""
+                  }`}
               />
               {errors.guardian?.occupation && (
                 <span className="text-error text-sm">
@@ -1827,21 +1780,25 @@ useEffect(() => {
         </div>
 
         {/* Academic Information Section */}
+        {/* Academic Information Section */}
         <div className="bg-base-200 p-6 rounded-box mb-6">
           <h2 className="text-2xl font-bold mb-4">Academic Information</h2>
+
+          {/* Row 1: Year Level & School Year */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
                   <i className="fa-solid fa-graduation-cap text-sm"></i>
-                  Year Level
+                  Year Level <span className="text-error">*</span>
                 </span>
               </label>
               <select
-                {...register("year_level")}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer ${
-                  errors.year_level ? "select-error" : ""
-                }`}
+                {...register("year_level", {
+                  required: "Year level is required",
+                })}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.year_level ? "select-error" : ""
+                  }`}
               >
                 <option value="">Select Year Level</option>
                 {yearLevel.map((yearlev) => (
@@ -1867,9 +1824,8 @@ useEffect(() => {
                 {...register("school_year", {
                   required: "School year is required",
                 })}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer ${
-                  errors.school_year ? "select-error" : ""
-                }`}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.school_year ? "select-error" : ""
+                  }`}
               >
                 <option value="">Select School Year</option>
                 {schoolYears.map((schoolYear) => (
@@ -1885,6 +1841,48 @@ useEffect(() => {
               )}
             </div>
           </div>
+
+          {/* Row 2: Class Section & Stream - NEW */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text flex items-center gap-2">
+                  <i className="fa-solid fa-chalkboard-user text-sm"></i>
+                  Class Section & Stream <span className="text-error">*</span>
+                </span>
+              </label>
+              <select
+                {...register("class_section", {
+                  required: "Class section is required"
+                })}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.class_section ? "select-error" : ""
+                  }`}
+              >
+                <option value="">Select Section or Stream</option>
+                {/* Sections */}
+                <option value="A">Section A</option>
+                <option value="B">Section B</option>
+                <option value="C">Section C</option>
+                <option value="D">Section D</option>
+                {/* Streams */}
+                <option value="PCM">PCM (Physics, Chemistry, Mathematics)</option>
+                <option value="PCB">PCB (Physics, Chemistry, Biology)</option>
+                <option value="COMM">COMM (Commerce)</option>
+              </select>
+              {errors.class_section && (
+                <span className="text-error text-sm">
+                  {errors.class_section.message}
+                </span>
+              )}
+            </div>
+
+            {/* Optional: Extra field if needed */}
+            <div className="form-control">
+              {/* You can add another field here if needed */}
+            </div>
+          </div>
+
+          {/* Row 3: Previous School & Previous Class */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             <div className="form-control">
               <label className="label">
@@ -1903,9 +1901,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder="Previous School Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.previous_school_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.previous_school_name ? "input-error" : ""
+                  }`}
               />
               {errors.previous_school_name && (
                 <span className="text-error text-sm">
@@ -1930,9 +1927,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder="Previous Class/Grade"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.previous_standard_studied ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.previous_standard_studied ? "input-error" : ""
+                  }`}
               />
               {errors.previous_standard_studied && (
                 <span className="text-error text-sm">
@@ -1941,6 +1937,8 @@ useEffect(() => {
               )}
             </div>
           </div>
+
+          {/* Row 4: Admission Date & TC Letter */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             <div className="form-control">
               <label className="label">
@@ -1954,6 +1952,7 @@ useEffect(() => {
                 max={new Date().toISOString().split("T")[0]}
                 {...register("admission_date", {
                   validate: (value) => {
+                    if (!value) return true;
                     const selectedDate = new Date(value);
                     const today = new Date();
                     if (selectedDate > today) {
@@ -1962,9 +1961,8 @@ useEffect(() => {
                     return true;
                   },
                 })}
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.admission_date ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.admission_date ? "input-error" : ""
+                  }`}
               />
               {errors.admission_date && (
                 <span className="text-error text-sm">
@@ -1984,9 +1982,8 @@ useEffect(() => {
                 {...register("tc_letter", {
                   required: "TC letter status is required",
                 })}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer ${
-                  errors.tc_letter ? "select-error" : ""
-                }`}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.tc_letter ? "select-error" : ""
+                  }`}
               >
                 <option value="">Select</option>
                 <option value="no">No</option>
@@ -2000,6 +1997,8 @@ useEffect(() => {
               )}
             </div>
           </div>
+
+          {/* Row 5: Emergency Contact & Distance */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             <div className="form-control">
               <label className="label">
@@ -2014,8 +2013,7 @@ useEffect(() => {
                   required: "Emergency contact is required",
                   pattern: {
                     value: /^[6789]\d{9}$/,
-                    message:
-                      "Emergency contact must start with 6, 7, 8, or 9 and be exactly 10 digits",
+                    message: "Emergency contact must start with 6, 7, 8, or 9 and be exactly 10 digits",
                   },
                   minLength: {
                     value: 10,
@@ -2025,26 +2023,17 @@ useEffect(() => {
                     value: 10,
                     message: "Emergency contact must be exactly 10 digits",
                   },
-                  validate: {
-                    validStart: (value) =>
-                      /^[6789]/.test(value) ||
-                      "Emergency contact must start with 6, 7, 8, or 9",
-                  },
                 })}
                 placeholder="Emergency Contact"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.emergency_contact_no ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.emergency_contact_no ? "input-error" : ""
+                  }`}
                 onInput={(e) => {
-                  // Remove any non-digit characters
                   e.target.value = e.target.value.replace(/\D/g, "");
-                  // Limit to 10 digits
                   if (e.target.value.length > 10) {
                     e.target.value = e.target.value.slice(0, 10);
                   }
                 }}
                 onKeyDown={(e) => {
-                  // Prevent typing of non-numeric characters except Backspace, Tab, Delete, Arrow keys
                   if (
                     !/[\d]|Backspace|Tab|Delete|ArrowLeft|ArrowRight|ArrowUp|ArrowDown/.test(
                       e.key
@@ -2052,31 +2041,14 @@ useEffect(() => {
                   ) {
                     e.preventDefault();
                   }
-
-                  // Prevent typing if first character is not 6,7,8,9 when at position 0
                   if (e.target.selectionStart === 0 && /[0-5]/.test(e.key)) {
                     e.preventDefault();
-                  }
-                }}
-                onPaste={(e) => {
-                  // Get pasted data
-                  const pastedData = e.clipboardData
-                    .getData("text")
-                    .replace(/\D/g, "");
-
-                  // Check if pasted data starts with valid digit
-                  if (!/^[6789]/.test(pastedData)) {
-                    e.preventDefault();
-                    // Optional: Show a temporary message
-                    alert("Pasted phone number must start with 6, 7, 8, or 9");
                   }
                 }}
               />
               {errors.emergency_contact_no && (
                 <span className="text-error text-sm">
-                  {errors.emergency_contact_no.type === "validStart"
-                    ? errors.emergency_contact_no.message
-                    : errors.emergency_contact_no.message}
+                  {errors.emergency_contact_no.message}
                 </span>
               )}
             </div>
@@ -2098,11 +2070,10 @@ useEffect(() => {
                   },
                 })}
                 placeholder="Distance in km"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.entire_road_distance_from_home_to_school
-                    ? "input-error"
-                    : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.entire_road_distance_from_home_to_school
+                  ? "input-error"
+                  : ""
+                  }`}
               />
               {errors.entire_road_distance_from_home_to_school && (
                 <span className="text-error text-sm">
@@ -2111,6 +2082,8 @@ useEffect(() => {
               )}
             </div>
           </div>
+
+          {/* Row 6: Marks */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
             <div className="form-control">
               <label className="label">
@@ -2126,9 +2099,8 @@ useEffect(() => {
                   min: { value: 0, message: "Marks cannot be negative" },
                 })}
                 placeholder="Marks Obtained"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.obtain_marks ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.obtain_marks ? "input-error" : ""
+                  }`}
               />
               {errors.obtain_marks && (
                 <span className="text-error text-sm">
@@ -2150,9 +2122,8 @@ useEffect(() => {
                   min: { value: 0, message: "Total marks cannot be negative" },
                 })}
                 placeholder="Total Marks"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.total_marks ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.total_marks ? "input-error" : ""
+                  }`}
               />
               {errors.total_marks && (
                 <span className="text-error text-sm">
@@ -2183,9 +2154,8 @@ useEffect(() => {
                 })}
                 placeholder="Previous Percentage"
                 step="0.01"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.previous_percentage ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.previous_percentage ? "input-error" : ""
+                  }`}
                 onInput={(e) => {
                   const value = parseFloat(e.target.value);
                   if (value > 100) e.target.value = 100;
@@ -2200,434 +2170,426 @@ useEffect(() => {
             </div>
           </div>
         </div>
-   <div className="bg-base-200 p-6 rounded-box mb-6">
-  <h2 className="text-2xl font-bold mb-4">Residential Address</h2>
-  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-    {/* House Number - OPTIONAL */}
-    <div className="form-control">
-      <label className="label">
-        <span className="label-text flex items-center gap-2">
-          <i className="fa-solid fa-home text-sm"></i>
-          House Number
-        </span>
-      </label>
-      <input
-        type="number"
-        {...register("address_input.house_no", {
-          validate: (value) => {
-            if (!value || value === "") return true;
-            const num = Number(value);
-            if (isNaN(num)) return "Invalid house number";
-            if (num < -2147483648 || num > 2147483647) return "Invalid house number";
-            return true;
-          }
-        })}
-        placeholder="House Number"
-        className={`input input-bordered w-full focus:outline-none ${
-          errors.address_input?.house_no ? "input-error" : ""
-        }`}
-        onKeyDown={(e) => {
-          if (e.key === "-" || e.key === "e") e.preventDefault();
-        }}
-        onWheel={(e) => e.target.blur()}
-      />
-      {errors.address_input?.house_no && (
-        <span className="text-error text-sm">
-          {errors.address_input.house_no.message}
-        </span>
-      )}
-    </div>
+        <div className="bg-base-200 p-6 rounded-box mb-6">
+          <h2 className="text-2xl font-bold mb-4">Residential Address</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {/* House Number - OPTIONAL */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text flex items-center gap-2">
+                  <i className="fa-solid fa-home text-sm"></i>
+                  House Number
+                </span>
+              </label>
+              <input
+                type="number"
+                {...register("address_input.house_no", {
+                  validate: (value) => {
+                    if (!value || value === "") return true;
+                    const num = Number(value);
+                    if (isNaN(num)) return "Invalid house number";
+                    if (num < -2147483648 || num > 2147483647) return "Invalid house number";
+                    return true;
+                  }
+                })}
+                placeholder="House Number"
+                className={`input input-bordered w-full focus:outline-none ${errors.address_input?.house_no ? "input-error" : ""
+                  }`}
+                onKeyDown={(e) => {
+                  if (e.key === "-" || e.key === "e") e.preventDefault();
+                }}
+                onWheel={(e) => e.target.blur()}
+              />
+              {errors.address_input?.house_no && (
+                <span className="text-error text-sm">
+                  {errors.address_input.house_no.message}
+                </span>
+              )}
+            </div>
 
-    {/* Habitation - OPTIONAL */}
-    <div className="form-control">
-      <label className="label">
-        <span className="label-text flex items-center gap-2">
-          <i className="fa-solid fa-map-location text-sm"></i>
-          Habitation
-        </span>
-      </label>
-      <input
-        type="text"
-        {...register("address_input.habitation", {
-          maxLength: {
-            value: 100,
-            message: "Habitation cannot exceed 100 characters",
-          },
-        })}
-        placeholder="Habitation"
-        className={`input input-bordered w-full focus:outline-none ${
-          errors.address_input?.habitation ? "input-error" : ""
-        }`}
-      />
-      {errors.address_input?.habitation && (
-        <span className="text-error text-sm">
-          {errors.address_input.habitation.message}
-        </span>
-      )}
-    </div>
+            {/* Habitation - OPTIONAL */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text flex items-center gap-2">
+                  <i className="fa-solid fa-map-location text-sm"></i>
+                  Habitation
+                </span>
+              </label>
+              <input
+                type="text"
+                {...register("address_input.habitation", {
+                  maxLength: {
+                    value: 100,
+                    message: "Habitation cannot exceed 100 characters",
+                  },
+                })}
+                placeholder="Habitation"
+                className={`input input-bordered w-full focus:outline-none ${errors.address_input?.habitation ? "input-error" : ""
+                  }`}
+              />
+              {errors.address_input?.habitation && (
+                <span className="text-error text-sm">
+                  {errors.address_input.habitation.message}
+                </span>
+              )}
+            </div>
 
-    {/* Block - OPTIONAL */}
-    <div className="form-control">
-      <label className="label">
-        <span className="label-text flex items-center gap-2">
-          <i className="fa-solid fa-building text-sm"></i>
-          Block
-        </span>
-      </label>
-      <input
-        type="text"
-        {...register("address_input.block", {
-          maxLength: {
-            value: 100,
-            message: "Block cannot exceed 100 characters",
-          },
-        })}
-        placeholder="Block"
-        className={`input input-bordered w-full focus:outline-none ${
-          errors.address_input?.block ? "input-error" : ""
-        }`}
-      />
-      {errors.address_input?.block && (
-        <span className="text-error text-sm">
-          {errors.address_input.block.message}
-        </span>
-      )}
-    </div>
+            {/* Block - OPTIONAL */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text flex items-center gap-2">
+                  <i className="fa-solid fa-building text-sm"></i>
+                  Block
+                </span>
+              </label>
+              <input
+                type="text"
+                {...register("address_input.block", {
+                  maxLength: {
+                    value: 100,
+                    message: "Block cannot exceed 100 characters",
+                  },
+                })}
+                placeholder="Block"
+                className={`input input-bordered w-full focus:outline-none ${errors.address_input?.block ? "input-error" : ""
+                  }`}
+              />
+              {errors.address_input?.block && (
+                <span className="text-error text-sm">
+                  {errors.address_input.block.message}
+                </span>
+              )}
+            </div>
 
-    {/* Ward Number - OPTIONAL */}
-    <div className="form-control">
-      <label className="label">
-        <span className="label-text flex items-center gap-2">
-          <i className="fa-solid fa-map text-sm"></i>
-          Ward Number
-        </span>
-      </label>
-      <input
-        type="number"
-        placeholder="Ward Number"
-        min={0}
-        className="input input-bordered w-full focus:outline-none"
-        {...register("address_input.ward_no")}
-        onKeyDown={(e) => {
-          if (e.key === "-" || e.key === "e") e.preventDefault();
-        }}
-        onWheel={(e) => e.target.blur()}
-      />
-    </div>
-  </div>
-
-  <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
-    {/* Zone - OPTIONAL */}
-    <div className="form-control">
-      <label className="label">
-        <span className="label-text flex items-center gap-2">
-          <i className="fa-solid fa-map-pin text-sm"></i>
-          Zone
-        </span>
-      </label>
-      <input
-        type="number"
-        placeholder="Zone"
-        min={0}
-        className="input input-bordered w-full focus:outline-none"
-        {...register("address_input.zone_no")}
-        onKeyDown={(e) => {
-          if (e.key === "-" || e.key === "e") e.preventDefault();
-        }}
-        onWheel={(e) => e.target.blur()}
-      />
-    </div>
-
-    {/* District - OPTIONAL */}
-    <div className="form-control">
-      <label className="label">
-        <span className="label-text flex items-center gap-2">
-          <i className="fa-solid fa-map text-sm"></i>
-          District
-        </span>
-      </label>
-      <input
-        type="text"
-        {...register("address_input.district", {
-          maxLength: {
-            value: 50,
-            message: "District cannot exceed 100 characters",
-          },
-        })}
-        placeholder="District"
-        className={`input input-bordered w-full focus:outline-none ${
-          errors.address_input?.district ? "input-error" : ""
-        }`}
-      />
-      {errors.address_input?.district && (
-        <span className="text-error text-sm">
-          {errors.address_input.district.message}
-        </span>
-      )}
-    </div>
-
-    {/* City - OPTIONAL */}
-    <div className="form-control relative">
-      <label className="label">
-        <span className="label-text flex items-center gap-2">
-          <i className="fa-solid fa-city text-sm"></i>
-          City
-        </span>
-      </label>
-      <div
-        className={`input input-bordered w-full flex items-center justify-between cursor-pointer ${
-          errors.address_input?.city ? "input-error" : ""
-        }`}
-        onClick={() => setShowCityDropdown(!showCityDropdown)}
-      >
-        <span className="text-gray-700 dark:text-gray-200">
-          {selectedCityName || "Select City"}
-        </span>
-      </div>
-
-      {showCityDropdown && (
-        <div className="absolute z-10 bg-white dark:bg-[#242627] rounded w-full mt-1 shadow-lg border border-gray-300 dark:border-gray-600">
-          <div className="p-2 sticky top-0 shadow-sm bg-white dark:bg-[#242627]">
-            <input
-              type="text"
-              placeholder="Search City..."
-              className="input input-bordered w-full focus:outline-none bg-white dark:bg-[#242627] text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-500"
-              value={citySearchInput}
-              onChange={(e) => setCitySearchInput(e.target.value)}
-            />
+            {/* Ward Number - OPTIONAL */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text flex items-center gap-2">
+                  <i className="fa-solid fa-map text-sm"></i>
+                  Ward Number
+                </span>
+              </label>
+              <input
+                type="number"
+                placeholder="Ward Number"
+                min={0}
+                className="input input-bordered w-full focus:outline-none"
+                {...register("address_input.ward_no")}
+                onKeyDown={(e) => {
+                  if (e.key === "-" || e.key === "e") e.preventDefault();
+                }}
+                onWheel={(e) => e.target.blur()}
+              />
+            </div>
           </div>
-          <div className="max-h-40 overflow-y-auto">
-            {filteredCities.length > 0 ? (
-              filteredCities.map((city) => (
-                <p
-                  key={city.id}
-                  className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer text-gray-800 dark:text-gray-200 capitalize"
-                  onClick={() => {
-                    setValue("address_input.city", city.id.toString(), {
-                      shouldValidate: true,
-                    });
-                    setSelectedCityName(city.name);
-                    setCitySearchInput("");
-                    setShowCityDropdown(false);
-                  }}
-                >
-                  {city.name}
-                </p>
-              ))
-            ) : (
-              <p className="p-2 text-gray-500 dark:text-gray-400">
-                No cities found
-              </p>
-            )}
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
+            {/* Zone - OPTIONAL */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text flex items-center gap-2">
+                  <i className="fa-solid fa-map-pin text-sm"></i>
+                  Zone
+                </span>
+              </label>
+              <input
+                type="number"
+                placeholder="Zone"
+                min={0}
+                className="input input-bordered w-full focus:outline-none"
+                {...register("address_input.zone_no")}
+                onKeyDown={(e) => {
+                  if (e.key === "-" || e.key === "e") e.preventDefault();
+                }}
+                onWheel={(e) => e.target.blur()}
+              />
+            </div>
+
+            {/* District - OPTIONAL */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text flex items-center gap-2">
+                  <i className="fa-solid fa-map text-sm"></i>
+                  District
+                </span>
+              </label>
+              <input
+                type="text"
+                {...register("address_input.district", {
+                  maxLength: {
+                    value: 50,
+                    message: "District cannot exceed 100 characters",
+                  },
+                })}
+                placeholder="District"
+                className={`input input-bordered w-full focus:outline-none ${errors.address_input?.district ? "input-error" : ""
+                  }`}
+              />
+              {errors.address_input?.district && (
+                <span className="text-error text-sm">
+                  {errors.address_input.district.message}
+                </span>
+              )}
+            </div>
+
+            {/* City - OPTIONAL */}
+            <div className="form-control relative">
+              <label className="label">
+                <span className="label-text flex items-center gap-2">
+                  <i className="fa-solid fa-city text-sm"></i>
+                  City
+                </span>
+              </label>
+              <div
+                className={`input input-bordered w-full flex items-center justify-between cursor-pointer ${errors.address_input?.city ? "input-error" : ""
+                  }`}
+                onClick={() => setShowCityDropdown(!showCityDropdown)}
+              >
+                <span className="text-gray-700 dark:text-gray-200">
+                  {selectedCityName || "Select City"}
+                </span>
+              </div>
+
+              {showCityDropdown && (
+                <div className="absolute z-10 bg-white dark:bg-[#242627] rounded w-full mt-1 shadow-lg border border-gray-300 dark:border-gray-600">
+                  <div className="p-2 sticky top-0 shadow-sm bg-white dark:bg-[#242627]">
+                    <input
+                      type="text"
+                      placeholder="Search City..."
+                      className="input input-bordered w-full focus:outline-none bg-white dark:bg-[#242627] text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-500"
+                      value={citySearchInput}
+                      onChange={(e) => setCitySearchInput(e.target.value)}
+                    />
+                  </div>
+                  <div className="max-h-40 overflow-y-auto">
+                    {filteredCities.length > 0 ? (
+                      filteredCities.map((city) => (
+                        <p
+                          key={city.id}
+                          className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer text-gray-800 dark:text-gray-200 capitalize"
+                          onClick={() => {
+                            setValue("address_input.city", city.id.toString(), {
+                              shouldValidate: true,
+                            });
+                            setSelectedCityName(city.name);
+                            setCitySearchInput("");
+                            setShowCityDropdown(false);
+                          }}
+                        >
+                          {city.name}
+                        </p>
+                      ))
+                    ) : (
+                      <p className="p-2 text-gray-500 dark:text-gray-400">
+                        No cities found
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+              {errors.address_input?.city && (
+                <span className="text-error text-sm">
+                  {errors.address_input.city.message}
+                </span>
+              )}
+            </div>
+
+            {/* Division - OPTIONAL */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text flex items-center gap-2">
+                  <i className="fa-solid fa-map-signs text-sm"></i>
+                  Division
+                </span>
+              </label>
+              <input
+                type="text"
+                {...register("address_input.division", {
+                  maxLength: {
+                    value: 20,
+                    message: "Division cannot exceed 20 characters",
+                  },
+                })}
+                placeholder="Division"
+                className={`input input-bordered w-full focus:outline-none ${errors.address_input?.division ? "input-error" : ""
+                  }`}
+              />
+              {errors.address_input?.division && (
+                <span className="text-error text-sm">
+                  {errors.address_input.division.message}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6 items-start">
+            {/* State - OPTIONAL */}
+            <div className="form-control relative">
+              <label className="label">
+                <span className="label-text flex items-center gap-2">
+                  <i className="fa-solid fa-flag text-sm"></i> State
+                </span>
+              </label>
+              <div
+                className={`input input-bordered w-full flex items-center cursor-pointer py-2`}
+                onClick={() => setShowStateDropdown(!showStateDropdown)}
+              >
+                <span className="text-gray-700 dark:text-gray-200">
+                  {selectedStateName || "Select State"}
+                </span>
+              </div>
+
+              {showStateDropdown && (
+                <div className="absolute z-10 bg-white dark:bg-[#242627] rounded w-full mt-1 shadow-lg border border-gray-300 dark:border-gray-600">
+                  <div className="p-2 sticky top-0 shadow-sm bg-white dark:bg-[#242627]">
+                    <input
+                      type="text"
+                      placeholder="Search State..."
+                      className="input input-bordered w-full focus:outline-none bg-white dark:bg-[#242627] text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-500 py-1"
+                      value={stateSearchInput}
+                      onChange={(e) => setStateSearchInput(e.target.value)}
+                    />
+                  </div>
+                  <div className="max-h-40 overflow-y-auto">
+                    {filteredStates.length > 0 ? (
+                      filteredStates.map((state) => (
+                        <p
+                          key={state.id}
+                          className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer text-gray-800 dark:text-gray-200 capitalize"
+                          onClick={() => {
+                            setValue("address_input.state", state.id.toString(), {
+                              shouldValidate: true,
+                            });
+                            setSelectedStateName(state.name);
+                            setStateSearchInput("");
+                            setShowStateDropdown(false);
+                          }}
+                        >
+                          {state.name}
+                        </p>
+                      ))
+                    ) : (
+                      <p className="p-2 text-gray-500 dark:text-gray-400">
+                        No states found
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Country - OPTIONAL */}
+            <div className="form-control relative">
+              <label className="label">
+                <span className="label-text flex items-center gap-2">
+                  <i className="fa-solid fa-globe text-sm"></i> Country
+                </span>
+              </label>
+              <div
+                className={`input input-bordered w-full flex items-center cursor-pointer py-2`}
+                onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+              >
+                <span className="text-gray-700 dark:text-gray-200">
+                  {selectedCountryName || "Select Country"}
+                </span>
+              </div>
+
+              {showCountryDropdown && (
+                <div className="absolute z-10 bg-white dark:bg-[#242627] rounded w-full mt-1 shadow-lg border border-gray-300 dark:border-gray-600">
+                  <div className="p-2 sticky top-0 shadow-sm bg-white dark:bg-[#242627]">
+                    <input
+                      type="text"
+                      placeholder="Search Country..."
+                      className="input input-bordered w-full focus:outline-none bg-white dark:bg-[#242627] text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-500 py-1"
+                      value={countrySearchInput}
+                      onChange={(e) => setCountrySearchInput(e.target.value)}
+                    />
+                  </div>
+                  <div className="max-h-40 overflow-y-auto">
+                    {filteredCountries.length > 0 ? (
+                      filteredCountries.map((country) => (
+                        <p
+                          key={country.id}
+                          className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer text-gray-800 dark:text-gray-200 capitalize"
+                          onClick={() => {
+                            setValue("address_input.country", country.id.toString(), {
+                              shouldValidate: true,
+                            });
+                            setSelectedCountryName(country.name);
+                            setCountrySearchInput("");
+                            setShowCountryDropdown(false);
+                          }}
+                        >
+                          {country.name}
+                        </p>
+                      ))
+                    ) : (
+                      <p className="p-2 text-gray-500 dark:text-gray-400">
+                        No countries found
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Pin Code - OPTIONAL with conditional validation */}
+            <div className="form-control flex flex-col justify-start relative">
+              <label className="label">
+                <span className="label-text flex items-center gap-2">
+                  <i className="fa-solid fa-mailbox text-sm"></i> Pin Code
+                </span>
+              </label>
+              <input
+                type="text"
+                {...register("address_input.area_code", {
+                  validate: (value) => {
+                    // Allow empty value
+                    if (!value || value === "") return true;
+                    // If filled, validate pattern
+                    return /^[1-9][0-9]{5}$/.test(value) || "Enter a valid 6-digit Indian Pincode";
+                  }
+                })}
+                placeholder="Pin Code"
+                className={`input input-bordered w-full focus:outline-none py-2 ${errors.address_input?.area_code ? "input-error" : ""
+                  }`}
+              />
+              {errors.address_input?.area_code && (
+                <span className="text-error text-sm mt-1">
+                  {errors.address_input.area_code.message}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 mt-6">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text flex items-center gap-2">
+                  <i className="fa-solid fa-location-dot text-sm"></i>
+                  Full Address Line
+                </span>
+              </label>
+              <textarea
+                maxLength={250}
+                {...register("address_input.address_line", {
+                  maxLength: {
+                    value: 250,
+                    message: "Address line cannot exceed 250 characters",
+                  },
+                })}
+                placeholder="Full Address"
+                className={`textarea textarea-bordered w-full focus:outline-none ${errors.address_input?.address_line ? "textarea-error" : ""
+                  }`}
+              ></textarea>
+              {errors.address_input?.address_line && (
+                <span className="text-error text-sm">
+                  {errors.address_input.address_line.message}
+                </span>
+              )}
+            </div>
           </div>
         </div>
-      )}
-      {errors.address_input?.city && (
-        <span className="text-error text-sm">
-          {errors.address_input.city.message}
-        </span>
-      )}
-    </div>
-
-    {/* Division - OPTIONAL */}
-    <div className="form-control">
-      <label className="label">
-        <span className="label-text flex items-center gap-2">
-          <i className="fa-solid fa-map-signs text-sm"></i>
-          Division
-        </span>
-      </label>
-      <input
-        type="text"
-        {...register("address_input.division", {
-          maxLength: {
-            value: 20,
-            message: "Division cannot exceed 20 characters",
-          },
-        })}
-        placeholder="Division"
-        className={`input input-bordered w-full focus:outline-none ${
-          errors.address_input?.division ? "input-error" : ""
-        }`}
-      />
-      {errors.address_input?.division && (
-        <span className="text-error text-sm">
-          {errors.address_input.division.message}
-        </span>
-      )}
-    </div>
-  </div>
-
-  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6 items-start">
-    {/* State - OPTIONAL */}
-    <div className="form-control relative">
-      <label className="label">
-        <span className="label-text flex items-center gap-2">
-          <i className="fa-solid fa-flag text-sm"></i> State
-        </span>
-      </label>
-      <div
-        className={`input input-bordered w-full flex items-center cursor-pointer py-2`}
-        onClick={() => setShowStateDropdown(!showStateDropdown)}
-      >
-        <span className="text-gray-700 dark:text-gray-200">
-          {selectedStateName || "Select State"}
-        </span>
-      </div>
-
-      {showStateDropdown && (
-        <div className="absolute z-10 bg-white dark:bg-[#242627] rounded w-full mt-1 shadow-lg border border-gray-300 dark:border-gray-600">
-          <div className="p-2 sticky top-0 shadow-sm bg-white dark:bg-[#242627]">
-            <input
-              type="text"
-              placeholder="Search State..."
-              className="input input-bordered w-full focus:outline-none bg-white dark:bg-[#242627] text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-500 py-1"
-              value={stateSearchInput}
-              onChange={(e) => setStateSearchInput(e.target.value)}
-            />
-          </div>
-          <div className="max-h-40 overflow-y-auto">
-            {filteredStates.length > 0 ? (
-              filteredStates.map((state) => (
-                <p
-                  key={state.id}
-                  className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer text-gray-800 dark:text-gray-200 capitalize"
-                  onClick={() => {
-                    setValue("address_input.state", state.id.toString(), {
-                      shouldValidate: true,
-                    });
-                    setSelectedStateName(state.name);
-                    setStateSearchInput("");
-                    setShowStateDropdown(false);
-                  }}
-                >
-                  {state.name}
-                </p>
-              ))
-            ) : (
-              <p className="p-2 text-gray-500 dark:text-gray-400">
-                No states found
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-
-    {/* Country - OPTIONAL */}
-    <div className="form-control relative">
-      <label className="label">
-        <span className="label-text flex items-center gap-2">
-          <i className="fa-solid fa-globe text-sm"></i> Country
-        </span>
-      </label>
-      <div
-        className={`input input-bordered w-full flex items-center cursor-pointer py-2`}
-        onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-      >
-        <span className="text-gray-700 dark:text-gray-200">
-          {selectedCountryName || "Select Country"}
-        </span>
-      </div>
-
-      {showCountryDropdown && (
-        <div className="absolute z-10 bg-white dark:bg-[#242627] rounded w-full mt-1 shadow-lg border border-gray-300 dark:border-gray-600">
-          <div className="p-2 sticky top-0 shadow-sm bg-white dark:bg-[#242627]">
-            <input
-              type="text"
-              placeholder="Search Country..."
-              className="input input-bordered w-full focus:outline-none bg-white dark:bg-[#242627] text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-500 py-1"
-              value={countrySearchInput}
-              onChange={(e) => setCountrySearchInput(e.target.value)}
-            />
-          </div>
-          <div className="max-h-40 overflow-y-auto">
-            {filteredCountries.length > 0 ? (
-              filteredCountries.map((country) => (
-                <p
-                  key={country.id}
-                  className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer text-gray-800 dark:text-gray-200 capitalize"
-                  onClick={() => {
-                    setValue("address_input.country", country.id.toString(), {
-                      shouldValidate: true,
-                    });
-                    setSelectedCountryName(country.name);
-                    setCountrySearchInput("");
-                    setShowCountryDropdown(false);
-                  }}
-                >
-                  {country.name}
-                </p>
-              ))
-            ) : (
-              <p className="p-2 text-gray-500 dark:text-gray-400">
-                No countries found
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-
-    {/* Pin Code - OPTIONAL with conditional validation */}
-    <div className="form-control flex flex-col justify-start relative">
-      <label className="label">
-        <span className="label-text flex items-center gap-2">
-          <i className="fa-solid fa-mailbox text-sm"></i> Pin Code
-        </span>
-      </label>
-      <input
-        type="text"
-        {...register("address_input.area_code", {
-          validate: (value) => {
-            // Allow empty value
-            if (!value || value === "") return true;
-            // If filled, validate pattern
-            return /^[1-9][0-9]{5}$/.test(value) || "Enter a valid 6-digit Indian Pincode";
-          }
-        })}
-        placeholder="Pin Code"
-        className={`input input-bordered w-full focus:outline-none py-2 ${
-          errors.address_input?.area_code ? "input-error" : ""
-        }`}
-      />
-      {errors.address_input?.area_code && (
-        <span className="text-error text-sm mt-1">
-          {errors.address_input.area_code.message}
-        </span>
-      )}
-    </div>
-  </div>
-
-  <div className="grid grid-cols-1 mt-6">
-    <div className="form-control">
-      <label className="label">
-        <span className="label-text flex items-center gap-2">
-          <i className="fa-solid fa-location-dot text-sm"></i>
-          Full Address Line
-        </span>
-      </label>
-      <textarea
-        maxLength={250}
-        {...register("address_input.address_line", {
-          maxLength: {
-            value: 250,
-            message: "Address line cannot exceed 250 characters",
-          },
-        })}
-        placeholder="Full Address"
-        className={`textarea textarea-bordered w-full focus:outline-none ${
-          errors.address_input?.address_line ? "textarea-error" : ""
-        }`}
-      ></textarea>
-      {errors.address_input?.address_line && (
-        <span className="text-error text-sm">
-          {errors.address_input.address_line.message}
-        </span>
-      )}
-    </div>
-  </div>
-</div>
         {/* Bank Details Section */}
         <div className="bg-base-200 p-6 rounded-box mb-6">
           <h2 className="text-2xl font-bold mb-4">Bank Account Details</h2>
@@ -2657,9 +2619,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder="Full Name as in Bank"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.banking_detail_input?.holder_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.banking_detail_input?.holder_name ? "input-error" : ""
+                  }`}
                 onInput={(e) => {
                   e.target.value = e.target.value
                     .replace(/[^A-Za-z\s]/g, "")
@@ -2698,9 +2659,8 @@ useEffect(() => {
                 type="text"
                 value={bankQuery}
                 placeholder="Bank Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.banking_detail_input?.bank_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.banking_detail_input?.bank_name ? "input-error" : ""
+                  }`}
                 onChange={handleBankInputChange}
                 onFocus={() => {
                   setFilteredBanks(bankNames);
@@ -2791,9 +2751,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder="Account Number"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.banking_detail_input?.account_no ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.banking_detail_input?.account_no ? "input-error" : ""
+                  }`}
                 onInput={(e) => {
                   e.target.value = e.target.value.replace(/[^0-9]/g, "");
                 }}
@@ -2822,9 +2781,8 @@ useEffect(() => {
                   },
                 })}
                 placeholder=" eg: SBIN0001234 or BARB0BHOPAL"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.banking_detail_input?.ifsc_code ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.banking_detail_input?.ifsc_code ? "input-error" : ""
+                  }`}
                 onInput={(e) => {
                   e.target.value = e.target.value
                     .toUpperCase()
