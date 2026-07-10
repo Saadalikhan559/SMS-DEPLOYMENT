@@ -1,15 +1,36 @@
-import { useState, useEffect, useRef, useContext } from "react";
+import { useState, useEffect, useRef, useContext, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import axios from "axios";
 import { constants } from "../../global/constants";
 import PaymentStatusDialog from "./PaymentStatusDialog";
 import PaymentStatusDialogOffline from "./PaymentStatusDialogOffline";
 import { fetchSchoolYear, fetchStudents1 } from "../../services/api/Api";
+import ReceiptModal from "./ReceiptModal";
 import { AuthContext } from "../../context/AuthContext";
+
+// ----- Helper: each month as separate group (no grouping) -----
+const getMonthlyGroups = (months) => {
+  const groups = [];
+  months.forEach((monthData) => {
+    monthData.fees.forEach((fee) => {
+      if (fee.fee_type && fee.fee_type.toLowerCase().includes("tuition")) {
+        groups.push({
+          id: `month-${monthData.month}-${fee.fee_id}`,
+          label: monthData.month,
+          count: 1,
+          monthNames: [monthData.month],
+          fee: fee,
+        });
+      }
+    });
+  });
+  return groups;
+};
 
 export const AdmissionFees = () => {
   const [students, setStudents] = useState([]);
   const [availableFees, setAvailableFees] = useState([]);
+  const [annualFees, setAnnualFees] = useState([]);
   const [selectedFeeIds, setSelectedFeeIds] = useState([]);
   const [paymentStatus, setPaymentStatus] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -19,25 +40,33 @@ export const AdmissionFees = () => {
   const [selectedClassId, setSelectedClassId] = useState(null);
   const [studentYearId, setStudentYearId] = useState(null);
   const [selectedSchYear, setselectedSchYear] = useState(null);
-
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingFees, setIsLoadingFees] = useState(false);
   const [schoolYear, setSchoolYear] = useState([]);
-  const [availableMonths, setAvailableMonths] = useState([]);
   const [apiError, setApiError] = useState("");
   const { axiosInstance } = useContext(AuthContext);
-
   const [selectedStudentName, setSelectedStudentName] = useState("");
   const [searchStudentInput, setSearchStudentInput] = useState("");
   const [showStudentDropdown, setShowStudentDropdown] = useState(false);
-
-  const authTokens = JSON.parse(localStorage.getItem("authTokens"));
-  const accessToken = authTokens?.access;
-  const BASE_URL = constants.baseUrl;
-  const UserRole = window.localStorage.getItem("userRole");
-  const [onredirect_url, setRedirect_Url] = useState("");
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [showChequeField, setShowChequeField] = useState(false);
+  const [selectedGroups, setSelectedGroups] = useState({});
+  const [receiptData, setReceiptData] = useState(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
+  const [selectedMonths, setSelectedMonths] = useState([]);
+
+  // ----- Editable fields state -----
+  const [parentName, setParentName] = useState("");
+  const [grade, setGrade] = useState("");
+  const [section, setSection] = useState("");
+  const [termFrom, setTermFrom] = useState("");
+  const [termTo, setTermTo] = useState("");
+  const [studentStream, setStudentStream] = useState("");
+  const [sessionMonths, setSessionMonths] = useState([]);
+
+  const BASE_URL = constants.baseUrl;
+  const UserRole = window.localStorage.getItem("userRole");
 
   const {
     register,
@@ -62,19 +91,167 @@ export const AdmissionFees = () => {
   const selectedStudentId = watch("student_id");
   const selectedPaymentMode = watch("payment_mode");
 
-  // Add effect to show/hide cheque field based on payment mode
+  // ----- Helper to get class label -----
+  const getClassLabel = () => {
+    if (!selectedClassId) return "";
+    const cls = classes.find(c => c.id === parseInt(selectedClassId));
+    return cls ? cls.level_name : "";
+  };
+
+  // ----- Helper to get term months from school year -----
+  const getTermMonths = () => {
+    if (!selectedSchYear) return { from: "July", to: "June" };
+    const sy = schoolYear.find(s => s.id === parseInt(selectedSchYear));
+    if (!sy || !sy.year_name) return { from: "July", to: "June" };
+    const years = sy.year_name.match(/\d{4}/g) || [];
+    const startYear = years[0] || new Date().getFullYear();
+    const endYear = years[1] || startYear + 1;
+    return {
+      from: `July ${startYear}`,
+      to: `June ${endYear}`,
+    };
+  };
+
+  // ----- Helper: Get school year name from ID -----
+  const getSchoolYearName = () => {
+    if (!selectedSchYear) return "";
+    const sy = schoolYear.find(s => s.id === parseInt(selectedSchYear));
+    return sy ? sy.year_name : "";
+  };
+
+  // ----- Helper: Check if class is 11 or 12 -----
+  const isClass11Or12 = () => {
+    if (!selectedClassId) return false;
+    const cls = classes.find(c => c.id === parseInt(selectedClassId));
+    if (!cls || !cls.level_name) return false;
+    const levelName = cls.level_name.toLowerCase();
+    return levelName.includes("class 11") || levelName.includes("class 12");
+  };
+
+  // ----- Helper: Get stream from section -----
+  const getStreamFromSection = (section) => {
+    if (!section) return null;
+    const sectionUpper = section.toUpperCase().trim();
+    const streams = ["PCM", "PCB", "COMM", "ARTS", "HUMANITIES", "SCIENCE", "COMMERCE"];
+    for (const stream of streams) {
+      if (sectionUpper.includes(stream) || sectionUpper === stream) {
+        return stream;
+      }
+    }
+    return null;
+  };
+
+  // ----- Helper: Generate session months -----
+  const generateSessionMonths = (schoolYearName) => {
+    if (!schoolYearName) return [];
+
+    const years = schoolYearName.match(/\d{4}/g) || [];
+    if (years.length < 2) return [];
+
+    const startYear = parseInt(years[0]);
+    const endYear = parseInt(years[1]);
+
+    const allMonths = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+
+    const sessionMonthsList = [];
+
+    for (let i = 6; i < 12; i++) {
+      sessionMonthsList.push(`${allMonths[i]} ${startYear}`);
+    }
+
+    for (let i = 0; i < 6; i++) {
+      sessionMonthsList.push(`${allMonths[i]} ${endYear}`);
+    }
+
+    return sessionMonthsList;
+  };
+
+  // ----- Fetch Receipt -----
+  const fetchReceipt = async (receiptNumber) => {
+    if (!receiptNumber) {
+      console.error("Receipt number is required");
+      return;
+    }
+
+    try {
+      setIsLoadingReceipt(true);
+      const response = await axiosInstance.get(
+        `${BASE_URL}/d/studentfees/get_receipt/?receipt_number=${encodeURIComponent(receiptNumber)}`
+      );
+
+      if (response.data) {
+        setReceiptData(response.data);
+        setShowReceiptModal(true);
+      } else {
+        console.error("No receipt data received");
+        alert("Failed to fetch receipt. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error fetching receipt:", error);
+      alert("Failed to fetch receipt. Please try again.");
+    } finally {
+      setIsLoadingReceipt(false);
+    }
+  };
+
+  // ----- Effects -----
+  useEffect(() => {
+    if (selectedStudent) {
+      setParentName(selectedStudent?.parent_name || selectedStudent?.guardian_name || "");
+      const sectionFromStudent = selectedStudent?.section || selectedStudent?.section_name || "";
+      setSection(sectionFromStudent);
+
+      if (isClass11Or12() && sectionFromStudent) {
+        const stream = getStreamFromSection(sectionFromStudent);
+        if (stream) {
+          setStudentStream(stream);
+          if (studentYearId && selectedSchYear) {
+            fetchAvailableFees(studentYearId, stream);
+          }
+        } else {
+          setStudentStream("");
+        }
+      } else {
+        setStudentStream("");
+      }
+    }
+    if (selectedClassId) {
+      setGrade(getClassLabel());
+    }
+    if (selectedSchYear) {
+      const terms = getTermMonths();
+      setTermFrom(terms.from);
+      setTermTo(terms.to);
+
+      const schoolYearName = getSchoolYearName();
+      const months = generateSessionMonths(schoolYearName);
+      setSessionMonths(months);
+    }
+  }, [selectedStudent, selectedClassId, selectedSchYear, classes, schoolYear]);
+
+  // Filter available fees based on selected months
+  const filteredAvailableFees = useMemo(() => {
+    if (!availableFees || availableFees.length === 0) return [];
+    if (selectedMonths.length === 0) return [];
+
+    return availableFees.filter(monthData => {
+      return selectedMonths.includes(monthData.month);
+    });
+  }, [availableFees, selectedMonths]);
+
   useEffect(() => {
     if (selectedPaymentMode === "cheque") {
       setShowChequeField(true);
     } else {
       setShowChequeField(false);
-      // Clear cheque number when switching away from cheque
       setValue("cheque_number", "");
       clearErrors("cheque_number");
     }
   }, [selectedPaymentMode, setValue, clearErrors]);
 
-  // Fetch all classes
   const getClasses = async () => {
     try {
       setIsLoading(true);
@@ -89,100 +266,98 @@ export const AdmissionFees = () => {
     }
   };
 
-  const fetchAvailableFees = async (studentId) => {
+  const fetchAvailableFees = async (studentId, stream = null) => {
     if (!studentId || !selectedSchYear) {
       setAvailableFees([]);
+      setAnnualFees([]);
       return [];
     }
 
     try {
       setIsLoadingFees(true);
-      const [feePreviewRes, structureRes] = await Promise.all([
-        axiosInstance.get(
-          `${BASE_URL}/d/studentfees/fee_preview/?student_year_id=${studentId}&school_year_id=${selectedSchYear}`,
-        ),
-        axiosInstance.get(
-          `${BASE_URL}/d/feestructures/?year_level_id=${selectedClassId}`,
-        ),
-      ]);
 
-      let previewData = Array.isArray(feePreviewRes.data)
-        ? feePreviewRes.data
-        : [];
-      let structures = Array.isArray(structureRes.data)
-        ? structureRes.data
-        : [];
+      let url = `${BASE_URL}/d/studentfees/fee_preview/?student_year_id=${studentId}&school_year_id=${selectedSchYear}`;
 
-      // Map months properly: fallback if month_id missing
-      const monthMap = {
-        January: 1,
-        February: 2,
-        March: 3,
-        April: 4,
-        May: 5,
-        June: 6,
-        July: 7,
-        August: 8,
-        September: 9,
-        October: 10,
-        November: 11,
-        December: 12,
-      };
+      if (stream && isClass11Or12()) {
+        url += `&stream=${encodeURIComponent(stream)}`;
+      }
 
-      // Attach fee_structure_id + ensure month_id exists
-      previewData.forEach((monthData) => {
-        monthData.month_id =
-          monthData.month_id || monthMap[monthData.month] || null;
+      const feePreviewRes = await axiosInstance.get(url);
 
-        monthData.fees = monthData.fees.map((fee) => {
-          const structure = structures.find((s) => s.fee_type === fee.fee_type);
+      if (feePreviewRes.data && typeof feePreviewRes.data === 'object') {
+        const data = feePreviewRes.data;
 
-          // Parse all amounts as floats
-          const originalAmount = parseFloat(fee.original_amount || 0) || 0;
-          const paidAmount = parseFloat(fee.paid_amount || 0) || 0;
-          const penaltyAmount = parseFloat(fee.penalty || 0) || 0;
+        if (data.student) {
+          if (data.student.father_name) {
+            setParentName(data.student.father_name);
+          } else if (data.student.mother_name) {
+            setParentName(data.student.mother_name);
+          }
 
-          // Correct due amount calculation: original - paid + penalty
-          const dueAmount = Math.max(
-            originalAmount - paidAmount + penaltyAmount,
-            0,
-          );
+          if (data.student.class_section) {
+            setSection(data.student.class_section);
+          }
+        }
 
-          return {
-            ...fee,
-            fee_structure_id: structure ? structure.id : null,
-            due_amount: dueAmount.toFixed(2), // Keep as string to match original format
-          };
-        });
-      });
+        if (data.annual && data.months) {
+          setAnnualFees(data.annual || []);
+          setAvailableFees(data.months || []);
+          return data.months || [];
+        }
+        if (Array.isArray(data)) {
+          setAnnualFees([]);
+          setAvailableFees(data);
+          return data;
+        }
+      }
 
-      setAvailableFees(previewData);
-      return previewData;
+      setAvailableFees([]);
+      setAnnualFees([]);
+      return [];
     } catch (error) {
       console.error("Error fetching fees:", error);
       setApiError("Failed to load fees");
       setAvailableFees([]);
+      setAnnualFees([]);
       return [];
     } finally {
       setIsLoadingFees(false);
     }
   };
-  // Fetch students for selected class
-  const getStudents = async (classId) => {
+
+  const getStudentsBySchoolYearAndClass = async () => {
+    if (!selectedSchYear || !selectedClassId) {
+      setStudents([]);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setApiError("");
-      const Students = await fetchStudents1(classId);
-      setStudents(Students);
+
+      const schoolYearName = getSchoolYearName();
+      if (!schoolYearName) {
+        setStudents([]);
+        return;
+      }
+
+      const response = await axiosInstance.get(
+        `${BASE_URL}/s/studentyearlevels/?year__year_name=${encodeURIComponent(schoolYearName)}&level__id=${selectedClassId}`
+      );
+
+      const studentData = Array.isArray(response.data) ? response.data :
+        (response.data.results ? response.data.results : []);
+
+      setStudents(studentData);
     } catch (err) {
       console.log(err);
       setApiError("Failed to load students");
+      setStudents([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Fetch school_year
   const getSchool_year = async () => {
     try {
       const obj = await fetchSchoolYear();
@@ -212,73 +387,221 @@ export const AdmissionFees = () => {
     setSelectedStudent(null);
     setStudentYearId(null);
     setAvailableFees([]);
-    setAvailableMonths([]);
+    setAnnualFees([]);
     setApiError("");
     setSelectedStudentName("");
+    setSelectedGroups({});
+    setStudents([]);
+    setStudentStream("");
+    setSection("");
+    setParentName("");
+    setSelectedMonths([]);
   };
 
   useEffect(() => {
-    if (selectedClassId) {
-      getStudents(selectedClassId);
-      setSelectedStudent(null);
-      setSelectedStudentName("");
+    if (selectedSchYear && selectedClassId) {
+      getStudentsBySchoolYearAndClass();
     } else {
       setStudents([]);
     }
-  }, [selectedClassId]);
+  }, [selectedSchYear, selectedClassId]);
 
   useEffect(() => {
     if (selectedStudentId) {
       const student = students.find(
-        (s) => s.student_id === parseInt(selectedStudentId),
+        (s) => s.student_id === parseInt(selectedStudentId) || s.id === parseInt(selectedStudentId)
       );
       setSelectedStudent(student || null);
       setStudentYearId(student ? student.id : null);
+
+      if (student && student.section) {
+        setSection(student.section);
+      }
     } else {
       setSelectedStudent(null);
       setStudentYearId(null);
       setAvailableFees([]);
+      setAnnualFees([]);
       setSelectedFeeIds([]);
+      setSelectedGroups({});
     }
   }, [selectedStudentId, students]);
 
-  // Fetch fees whenever studentYearId or school year changes
   useEffect(() => {
     if (studentYearId && selectedSchYear) {
-      fetchAvailableFees(studentYearId);
+      if (isClass11Or12() && studentStream) {
+        fetchAvailableFees(studentYearId, studentStream);
+      } else if (isClass11Or12() && selectedStudent && selectedStudent.section) {
+        const stream = getStreamFromSection(selectedStudent.section);
+        if (stream) {
+          setStudentStream(stream);
+          fetchAvailableFees(studentYearId, stream);
+        } else {
+          fetchAvailableFees(studentYearId);
+        }
+      } else {
+        fetchAvailableFees(studentYearId);
+      }
     } else {
       setAvailableFees([]);
+      setAnnualFees([]);
     }
-  }, [studentYearId, selectedSchYear, selectedClassId]);
+  }, [studentYearId, selectedSchYear, studentStream]);
+
+  // Memoize monthlyGroups based on filtered available fees
+  const monthlyGroups = useMemo(() => getMonthlyGroups(filteredAvailableFees), [filteredAvailableFees]);
+
+  useEffect(() => {
+    setSelectedFeeIds([]);
+    setSelectedGroups({});
+  }, [studentYearId, selectedSchYear]);
 
   const role = localStorage.getItem("userRole");
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
-  // Fix role condition
   const isStaffOrDirector =
     role === constants.roles.officeStaff || role === constants.roles.director;
-
   const paymentModes = isStaffOrDirector
     ? ["cash", "cheque", "online"]
     : ["online"];
 
+  // Auto-select all monthly fees - Only initialize if selectedGroups is empty
+  useEffect(() => {
+    if (monthlyGroups.length > 0 && Object.keys(selectedGroups).length === 0) {
+      const newGroups = {};
+      monthlyGroups.forEach((group) => {
+        const due = parseFloat(group.fee.due_amount) || 0;
+        newGroups[group.id] = {
+          checked: true,
+          collectAmount: due,
+        };
+      });
+      setSelectedGroups(newGroups);
+    }
+  }, [monthlyGroups]);
+
+  // Handle annual fee selection
+  const handleAnnualFeeSelect = (feeId) => {
+    setSelectedFeeIds(prev => {
+      if (prev.includes(feeId)) {
+        return prev.filter(id => id !== feeId);
+      } else {
+        return [...prev, feeId];
+      }
+    });
+  };
+
+  // Handle select all annual fees
+  const handleSelectAllAnnualFees = () => {
+    if (selectedFeeIds.length === annualFees.length) {
+      setSelectedFeeIds([]);
+    } else {
+      const allFeeIds = annualFees.map(fee => fee.fee_id);
+      setSelectedFeeIds(allFeeIds);
+    }
+  };
+
+  // Handle month selection from dropdown
+  const handleMonthSelection = (month) => {
+    setSelectedMonths(prev => {
+      if (prev.includes(month)) {
+        return prev.filter(m => m !== month);
+      } else {
+        return [...prev, month];
+      }
+    });
+  };
+
+  // Handle select all months
+  const handleSelectAllMonths = () => {
+    if (selectedMonths.length === sessionMonths.length) {
+      setSelectedMonths([]);
+    } else {
+      setSelectedMonths([...sessionMonths]);
+    }
+  };
+
+  // handleGroupCollectChange - properly handles partial payments and updates paid amount
+  const handleGroupCollectChange = (groupId, value) => {
+    const group = monthlyGroups.find((g) => g.id === groupId);
+    if (!group) return;
+
+    const due = parseFloat(group.fee.due_amount) || 0;
+    
+    // Handle empty input
+    if (value === '' || value === null || value === undefined) {
+      setSelectedGroups((prev) => ({
+        ...prev,
+        [groupId]: {
+          ...prev[groupId],
+          collectAmount: 0,
+        },
+      }));
+      return;
+    }
+
+    const inputValue = parseFloat(value);
+    
+    // Handle invalid input
+    if (isNaN(inputValue)) {
+      return;
+    }
+
+    // Allow any amount from 0 to due amount
+    const collectAmount = Math.min(Math.max(0, inputValue), due);
+
+    setSelectedGroups((prev) => {
+      const updated = {
+        ...prev,
+        [groupId]: {
+          ...prev[groupId],
+          collectAmount: collectAmount,
+        },
+      };
+      return updated;
+    });
+  };
+
+  const calculateTotalAmount = () => {
+    let annualTotal = 0;
+    annualFees.forEach((fee) => {
+      if (selectedFeeIds.includes(fee.fee_id)) {
+        annualTotal += parseFloat(fee.due_amount) || 0;
+      }
+    });
+    let monthlyTotal = 0;
+    monthlyGroups.forEach((group) => {
+      const sel = selectedGroups[group.id];
+      if (sel && sel.checked) {
+        monthlyTotal += parseFloat(sel.collectAmount) || 0;
+      }
+    });
+    return annualTotal + monthlyTotal;
+  };
+
+  // Update paid amount when selectedFeeIds or selectedGroups changes
+  useEffect(() => {
+    const total = calculateTotalAmount();
+    setValue("paid_amount", total.toFixed(2), {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  }, [selectedFeeIds, selectedGroups, annualFees, monthlyGroups, setValue]);
+
+  // ----- Submit -----
   const onSubmit = async (data) => {
-    if (selectedFeeIds.length === 0) {
+    const annualSelected = annualFees.filter((fee) =>
+      selectedFeeIds.includes(fee.fee_id)
+    );
+    const monthlySelected = monthlyGroups.filter(
+      (g) => selectedGroups[g.id] && selectedGroups[g.id].checked
+    );
+
+    if (annualSelected.length === 0 && monthlySelected.length === 0) {
       alert("Please select at least one fee to pay");
       return;
     }
 
     const paymentMode = data.payment_mode.toLowerCase();
-    const chequeNumber = data.cheque_number || ""; // Get cheque number
-
+    const chequeNumber = data.cheque_number || "";
     const schoolYearId = selectedSchYear;
     const paidAmount = parseFloat(data.paid_amount) || 0;
 
@@ -287,120 +610,75 @@ export const AdmissionFees = () => {
       return;
     }
 
-    // Build a list of all selected fees with due amounts (INCLUDING PENALTY)
-    const selectedFeeObjects = [];
-    availableFees.forEach((monthData) => {
-      const monthId = monthData.month_id;
-
-      monthData.fees.forEach((fee) => {
-        const rowKey = `${monthData.month}-${fee.fee_id}`;
-
-        if (selectedFeeIds.includes(rowKey)) {
-          // Use fee.due_amount which already includes penalty
-          const due = parseFloat(fee.due_amount) || 0;
-
-          selectedFeeObjects.push({
-            fee_structure_id: fee.fee_structure_id || fee.fee_id,
-            month: monthId,
-            due_amount: due, // This now includes penalty
-          });
-        }
-      });
+    const fees = [];
+    
+    // Annual fees
+    annualSelected.forEach((fee) => {
+      const amount = parseFloat(fee.due_amount) || 0;
+      if (amount > 0) {
+        fees.push({
+          fee_type_id: fee.fee_id,
+          month: null,
+          amount: amount,
+        });
+      }
     });
 
-    // Sort fees by highest due amount
-    selectedFeeObjects.sort((a, b) => b.due_amount - a.due_amount);
+    // Monthly fees - using collectAmount from selectedGroups
+    monthlySelected.forEach((group) => {
+      const sel = selectedGroups[group.id];
+      const totalGroupAmount = parseFloat(sel.collectAmount) || 0;
+      
+      // Skip if amount is 0
+      if (totalGroupAmount <= 0) {
+        return;
+      }
+      
+      const monthMap = {
+        "January": 1, "February": 2, "March": 3, "April": 4,
+        "May": 5, "June": 6, "July": 7, "August": 8,
+        "September": 9, "October": 10, "November": 11, "December": 12
+      };
 
-    // Distribute paid amount across selected fees
-    let remainingAmount = paidAmount;
-    const distributedFees = [];
+      const monthName = group.monthNames[0]?.split(' ')[0] || "";
+      const monthId = monthMap[monthName] || 0;
 
-    selectedFeeObjects.forEach((feeObj) => {
-      const amountToPay = Math.min(remainingAmount, feeObj.due_amount);
-      remainingAmount -= amountToPay;
-
-      distributedFees.push({
-        fee_type_id: feeObj.fee_structure_id,
-        month: feeObj.month,
-        amount: parseFloat(amountToPay.toFixed(2)),
-      });
+      if (monthId >= 1 && monthId <= 12) {
+        fees.push({
+          fee_type_id: group.fee.fee_id,
+          month: monthId,
+          amount: totalGroupAmount,
+        });
+      } else {
+        console.error("Invalid month:", monthName);
+      }
     });
 
-    if (remainingAmount > 0) {
-      console.log(
-        "Remaining amount after distributing to fees:",
-        remainingAmount,
-      );
+    if (fees.length === 0) {
+      alert("No valid fees to submit. Please check the selected fees.");
+      return;
     }
 
-    // Prepare payload with distributed fees
     const payload = {
       student_year_id: studentYearId,
       school_year_id: schoolYearId,
       payment_method: paymentMode,
       paid_amount: paidAmount,
-      fees: distributedFees,
-      cheque_number: paymentMode === "cheque" ? chequeNumber : null, // Add cheque number
+      fees: fees,
+      cheque_number: paymentMode === "cheque" ? chequeNumber : null,
+      parent_name: parentName,
+      grade: grade,
+      section: section,
+      term_from: termFrom,
+      term_to: termTo,
     };
 
+    console.log("Submitting payload:", payload);
+
     try {
-      // Submit payment request
-      // if (paymentMode === "online") {
-      //   const submitResInitial = await axiosInstance.post(
-      //     `${BASE_URL}/d/studentfees/initiate_payment/`,
-      //     payload
-      //   );
-      //   const { razorpay_order_id, amount, currency, receipt } =
-      //     submitResInitial.data;
-
-      //   const options = {
-      //     key: "rzp_test_4h2aRSAPbYw3f8",
-      //     amount: paidAmount * 100,
-      //     currency: "INR",
-      //     name: "School Fee Payment",
-      //     description: `Receipt: ${receipt}`,
-      //     order_id: razorpay_order_id,
-      //     handler: async function (response) {
-      //       const verifyPayload = {
-      //         student_year_id: studentYearId,
-      //         selected_fees: distributedFees,
-      //         paid_amount: paidAmount,
-      //         payment_mode: paymentMode,
-      //         received_by: 2, // adjust as needed
-      //         razorpay_order_id: response.razorpay_order_id,
-      //         razorpay_payment_id: response.razorpay_payment_id,
-      //         razorpay_signature: response.razorpay_signature,
-      //       };
-
-      //       const confirmRes = await axiosInstance.post(
-      //         `${BASE_URL}/d/studentfees/confirm_payment/`,
-      //         verifyPayload
-      //       );
-
-      //       setPaymentStatus(confirmRes.data);
-      //       setShowPaymentDialog(true);
-      //     },
-      //     prefill: {
-      //       name: selectedStudent?.student_name || "",
-      //       email: selectedStudent?.email || "",
-      //     },
-      //     theme: { color: "#5E35B1" },
-      //   };
-
-      //   const rzp = new window.Razorpay(options);
-      //   rzp.open();
-      // } else {
-      //   const submitRes = await axiosInstance.post(
-      //     `${BASE_URL}/d/studentfees/submit_fee/`,
-      //     payload
-      //   );
-      //   setPaymentStatus(submitRes.data);
-      //   setShowPaymentDialog1(true);
-      // }
-
       const submitResInitial = await axiosInstance.post(
         `${BASE_URL}/d/studentfees/submit_fee/`,
-        payload,
+        payload
       );
 
       if (submitResInitial.status === 200 || submitResInitial.status === 201) {
@@ -409,83 +687,39 @@ export const AdmissionFees = () => {
             setIsRedirecting(true);
             window.location.href = submitResInitial.data.redirect_url;
             return;
-          } else if (paymentMode !== "online") {
+          } else if (paymentMode === "cash" || paymentMode === "cheque") {
             setPaymentStatus(submitResInitial.data);
             setShowPaymentDialog1(true);
+
+            if (submitResInitial.data.receipt_number) {
+              const receiptNumber = submitResInitial.data.receipt_number;
+              setTimeout(() => {
+                fetchReceipt(receiptNumber);
+              }, 1500);
+            }
           }
         }
       }
     } catch (err) {
       console.error("Payment failed", err);
+      console.error("Error response:", err.response?.data);
       setPaymentStatus("Payment failed. Please try again.");
+      if (err.response?.data) {
+        const errorMsg = typeof err.response.data === 'object'
+          ? JSON.stringify(err.response.data)
+          : err.response.data;
+        alert(`Payment failed: ${errorMsg}`);
+      }
     }
   };
 
-  const calculateTotalAmount = () => {
-    let baseAmount = 0;
-    let paidAmount = 0;
-    let penaltyAmount = 0;
-    let dueAmount = 0;
-
-    availableFees.forEach((monthData) => {
-      monthData.fees.forEach((fee) => {
-        const rowKey = `${monthData.month}-${fee.fee_id}`;
-        if (selectedFeeIds.includes(rowKey)) {
-          const original = parseFloat(fee.original_amount) || 0;
-          const paid = parseFloat(fee.paid_amount) || 0;
-          const penalty = parseFloat(fee.penalty) || 0;
-
-          baseAmount += original;
-          paidAmount += paid;
-          penaltyAmount += penalty;
-          dueAmount += Math.max(original - paid + penalty, 0);
-        }
-      });
-    });
-
-    return {
-      baseAmount,
-      paidAmount,
-      penaltyAmount,
-      dueAmount,
-      totalAmount: dueAmount, // This now correctly includes penalties
-    };
-  };
-
-  const totalAmount = calculateTotalAmount();
-
-  const handleFeeSelection = (feeId, isSelected) => {
-    if (isSelected) setSelectedFeeIds((prev) => [...prev, feeId]);
-    else setSelectedFeeIds((prev) => prev.filter((id) => id !== feeId));
-  };
-
-  // Keep paid_amount synced to total selected due
-  useEffect(() => {
-    const totals = calculateTotalAmount();
-    setValue("paid_amount", totals.totalAmount.toFixed(2), {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
-  }, [selectedFeeIds, availableFees, setValue]);
-
-  const stuId = window.localStorage.getItem("student_id");
-  const stuYearlvlName = localStorage.getItem("stu_year_level_name");
-  const stuYearlvlId = localStorage.getItem("stu_year_level_id");
-
-  const handleRetry = () => {
-    if (studentYearId) {
-      fetchAvailableFees(studentYearId);
-    }
-  };
-
-  // Filter students by name or scholar number
   const filteredStudents = students
     ?.filter((student) =>
       `${student?.student_name || ""} ${student?.scholar_number || ""}`
         .toLowerCase()
-        .includes(searchStudentInput.trim().toLowerCase()),
+        .includes(searchStudentInput.trim().toLowerCase())
     )
-    .sort((a, b) => a.student_name.localeCompare(b.student_name));
+    .sort((a, b) => (a.student_name || "").localeCompare(b.student_name || ""));
 
   const dropdownRef = useRef(null);
 
@@ -495,39 +729,24 @@ export const AdmissionFees = () => {
         setShowStudentDropdown(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
-
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
-  const handleMonthSelection = (monthData, isChecked) => {
-    const updatedSelectedFeeIds = [...selectedFeeIds];
-
-    monthData.fees.forEach((fee) => {
-      const rowKey = `${monthData.month}-${fee.fee_id}`;
-      const isSelectable = fee.status !== "Paid";
-
-      if (isSelectable) {
-        const index = updatedSelectedFeeIds.indexOf(rowKey);
-
-        if (isChecked && index === -1) {
-          updatedSelectedFeeIds.push(rowKey);
-        } else if (!isChecked && index !== -1) {
-          updatedSelectedFeeIds.splice(index, 1);
-        }
-      }
-    });
-
-    setSelectedFeeIds(updatedSelectedFeeIds);
-  };
-
-  // Gate for disabling bottom inputs and button until payment mode selected
   const isPaymentModeSelected = !!selectedPaymentMode;
+  const totalAmount = calculateTotalAmount();
   const isSubmitDisabled =
-    isSubmitting || selectedFeeIds.length === 0 || !isPaymentModeSelected;
+    isSubmitting ||
+    (selectedFeeIds.length === 0 &&
+      !Object.values(selectedGroups).some((g) => g && g.checked && g.collectAmount > 0)) ||
+    !isPaymentModeSelected ||
+    totalAmount <= 0;
+
+  const stuId = window.localStorage.getItem("student_id");
+  const stuYearlvlName = localStorage.getItem("stu_year_level_name");
+  const stuYearlvlId = localStorage.getItem("stu_year_level_id");
 
   if (isLoading && !apiError) {
     return (
@@ -578,6 +797,14 @@ export const AdmissionFees = () => {
             <i className="fa-solid fa-money-bill-wave ml-2"></i>
           </h1>
 
+          {/* Stream indicator for class 11/12 */}
+          {isClass11Or12() && studentStream && selectedStudent && (
+            <div className="alert alert-info mb-4">
+              <i className="fa-solid fa-info-circle"></i>
+              <span>Stream: <strong>{studentStream}</strong> (Fee structure loaded for this stream)</span>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             {/* School Year */}
             <div className="form-control">
@@ -601,7 +828,7 @@ export const AdmissionFees = () => {
               </select>
             </div>
 
-            {/* Class Selection */}
+            {/* Class */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-1">
@@ -617,22 +844,22 @@ export const AdmissionFees = () => {
                 <option value="">Select Class</option>
                 {UserRole === "director"
                   ? classes?.map((classItem) => (
+                    <option key={classItem.id} value={classItem.id}>
+                      {classItem.level_name}
+                    </option>
+                  ))
+                  : UserRole === "office staff"
+                    ? classes?.map((classItem) => (
                       <option key={classItem.id} value={classItem.id}>
                         {classItem.level_name}
                       </option>
                     ))
-                  : UserRole === "office staff"
-                    ? classes?.map((classItem) => (
+                    : UserRole === "guardian"
+                      ? classes?.map((classItem) => (
                         <option key={classItem.id} value={classItem.id}>
                           {classItem.level_name}
                         </option>
                       ))
-                    : UserRole === "guardian"
-                      ? classes?.map((classItem) => (
-                          <option key={classItem.id} value={classItem.id}>
-                            {classItem.level_name}
-                          </option>
-                        ))
                       : null}
                 {UserRole === "student" && (
                   <option key={stuYearlvlId} value={stuYearlvlId}>
@@ -642,7 +869,7 @@ export const AdmissionFees = () => {
               </select>
             </div>
 
-            {/* Student Selection */}
+            {/* Student */}
             <div className="form-control relative" ref={dropdownRef}>
               <label className="label">
                 <span className="label-text flex items-center gap-1 text-gray-700 dark:text-gray-300">
@@ -650,14 +877,12 @@ export const AdmissionFees = () => {
                   Student <span className="text-error">*</span>
                 </span>
               </label>
-
               <div
-                className={`input input-bordered w-full flex items-center justify-between cursor-pointer ${
-                  !selectedClassId ? "cursor-not-allowed opacity-70" : ""
-                }`}
-                disabled={!selectedClassId}
+                className={`input input-bordered w-full flex items-center justify-between cursor-pointer ${!selectedClassId || !selectedSchYear ? "cursor-not-allowed opacity-70" : ""
+                  }`}
+                disabled={!selectedClassId || !selectedSchYear}
                 onClick={() => {
-                  if (selectedClassId)
+                  if (selectedClassId && selectedSchYear)
                     setShowStudentDropdown(!showStudentDropdown);
                 }}
               >
@@ -666,8 +891,6 @@ export const AdmissionFees = () => {
                   <span className="arrow">&#9662;</span>
                 </div>
               </div>
-
-              {/* Hidden input for form submission */}
               <input
                 type="hidden"
                 {...register("student_id", {
@@ -676,11 +899,8 @@ export const AdmissionFees = () => {
                 value={watch("student_id") || ""}
                 readOnly
               />
-
-              {/* Dropdown with search and list */}
-              {showStudentDropdown && selectedClassId && (
+              {showStudentDropdown && selectedClassId && selectedSchYear && (
                 <div className="absolute z-10 bg-white text-gray-700 dark:bg-[#191b1b] dark:text-amber-50 rounded w-full mt-1 shadow-lg">
-                  {/* Search input */}
                   <div className="p-2 sticky top-0 dark:bg-[#1c1f1f] shadow-sm bg-base-100">
                     <input
                       type="text"
@@ -691,41 +911,48 @@ export const AdmissionFees = () => {
                       autoComplete="off"
                     />
                   </div>
-
-                  {/* Student results */}
                   <div className="max-h-40 overflow-y-auto">
                     {isLoading ? (
                       <p className="p-2">Loading students...</p>
                     ) : filteredStudents?.length > 0 ? (
-                      filteredStudents.map((stu) => (
-                        <p
-                          key={stu.student_id}
-                          className="p-2 hover:bg-base-200 cursor-pointer"
-                          onClick={() => {
-                            const displayName = `${stu.student_name} - ${stu.scholar_number} (Scholar No)`;
-                            setSelectedStudentName(displayName);
-                            setSearchStudentInput("");
-                            setShowStudentDropdown(false);
-                            setValue("student_id", stu.student_id, {
-                              shouldValidate: true,
-                            });
-                            clearErrors("student_id");
-                            setSelectedStudent(stu);
-                            setStudentYearId(stu.id); // set student_year_id
-                            setSelectedFeeIds([]);
-                          }}
-                        >
-                          {stu.student_name} - {stu.scholar_number} (Scholar No)
-                        </p>
-                      ))
+                      filteredStudents.map((stu) => {
+                        const studentId = stu.student_id || stu.id;
+                        const studentName = stu.student_name || stu.name || "Unknown";
+                        const scholarNo = stu.scholar_number || "";
+                        const sectionDisplay = stu.section ? ` (${stu.section})` : "";
+                        return (
+                          <p
+                            key={studentId}
+                            className="p-2 hover:bg-base-200 cursor-pointer"
+                            onClick={() => {
+                              const displayName = `${studentName}${scholarNo ? ` - ${scholarNo}` : ''}${sectionDisplay}`;
+                              setSelectedStudentName(displayName);
+                              setSearchStudentInput("");
+                              setShowStudentDropdown(false);
+                              setValue("student_id", studentId, {
+                                shouldValidate: true,
+                              });
+                              clearErrors("student_id");
+                              setSelectedStudent(stu);
+                              setStudentYearId(stu.id);
+                              setSelectedFeeIds([]);
+                              setSelectedGroups({});
+
+                              if (stu.section) {
+                                setSection(stu.section);
+                              }
+                            }}
+                          >
+                            {studentName}{scholarNo ? ` - ${scholarNo}` : ''}{sectionDisplay}
+                          </p>
+                        );
+                      })
                     ) : (
-                      <p className="p-2">No students found.</p>
+                      <p className="p-2">No students found for this class and year.</p>
                     )}
                   </div>
                 </div>
               )}
-
-              {/* Error message */}
               {errors.student_id && (
                 <p className="text-error text-sm mt-1">
                   {errors.student_id.message}
@@ -733,7 +960,7 @@ export const AdmissionFees = () => {
               )}
             </div>
 
-            {/* Payment Mode Selection */}
+            {/* Payment Mode */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
@@ -742,9 +969,8 @@ export const AdmissionFees = () => {
                 </span>
               </label>
               <select
-                className={`select w-full focus:outline-none ${
-                  errors.payment_mode ? "select-error" : "select-bordered"
-                }`}
+                className={`select w-full focus:outline-none ${errors.payment_mode ? "select-error" : "select-bordered"
+                  }`}
                 {...register("payment_mode", {
                   required: "Payment mode is required",
                 })}
@@ -767,85 +993,151 @@ export const AdmissionFees = () => {
             </div>
           </div>
 
-          {/* Available Fees Display */}
-          {availableFees.length > 0 && selectedStudent && (
-            <div className="mt-8">
-              <h2 className="text-2xl font-bold mb-6 text-center text-gray-900 dark:text-gray-100">
-                Fee Details for {selectedStudent.student_name}
-              </h2>
+          {/* ----- STUDENT INFO SECTION ----- */}
+          {selectedStudent && selectedSchYear && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl mt-6 border-2 border-blue-200 shadow-lg">
+              <div className="bg-white rounded-lg p-4 shadow-md border border-gray-200">
+                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <i className="fa-solid fa-user text-blue-600"></i>
+                  Parent's Name
+                </label>
+                <input
+                  type="text"
+                  className="input input-bordered w-full focus:outline-none bg-gray-100 cursor-not-allowed mt-1 font-medium text-gray-800"
+                  value={parentName}
+                  disabled
+                  readOnly
+                  placeholder="Parent name will auto-populate"
+                />
+              </div>
+              <div className="bg-white rounded-lg p-4 shadow-md border border-gray-200">
+                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <i className="fa-solid fa-graduation-cap text-green-600"></i>
+                  Grade
+                </label>
+                <input
+                  type="text"
+                  className="input input-bordered w-full focus:outline-none bg-gray-100 cursor-not-allowed mt-1 font-medium text-gray-800"
+                  value={grade}
+                  disabled                  readOnly
+                  placeholder="Grade will auto-populate"
+                />
+              </div>
+              <div className="bg-white rounded-lg p-4 shadow-md border border-gray-200">
+                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <i className="fa-solid fa-layer-group text-purple-600"></i>
+                  Section
+                </label>
+                <input
+                  type="text"
+                  className="input input-bordered w-full focus:outline-none bg-gray-100 cursor-not-allowed mt-1 font-medium text-gray-800"
+                  value={section}
+                  disabled
+                  readOnly
+                  placeholder="Section will auto-populate"
+                />
+              </div>
+            </div>
+          )}
 
-              {/* Fee Table */}
-              <div className="overflow-x-auto">
-                <div className="max-h-[500px] overflow-y-auto rounded-lg border">
-                  <table className="table w-full">
-                    <thead className="sticky top-0 bg-base-200 z-3">
-                      <tr>
-                        <th>Month</th>
-                        <th>Fee Type</th>
-                        <th>Original Amount</th>
-                        <th>Paid</th>
-                        <th>Due</th>
-                        <th>Status</th>
-                        <th>Select</th>
-                      </tr>
-                    </thead>
+          {/* ----- MONTH SELECTION - BUTTON STYLE ----- */}
+          {selectedStudent && sessionMonths.length > 0 && (
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-semibold text-gray-700">
+                  <i className="fa-solid fa-calendar mr-2"></i>
+                  Select Months for Tuition Fees
+                </label>
+                <button
+                  type="button"
+                  onClick={handleSelectAllMonths}
+                  className="btn btn-sm btn-outline btn-primary"
+                >
+                  {selectedMonths.length === sessionMonths.length ? "Deselect All" : "Select All"}
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {sessionMonths.map((month) => (
+                  <button
+                    key={month}
+                    type="button"
+                    onClick={() => handleMonthSelection(month)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${selectedMonths.includes(month)
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+                      }`}
+                  >
+                    {month}
+                  </button>
+                ))}
+              </div>
+              {selectedMonths.length > 0 && (
+                <div className="mt-3 text-sm text-gray-600">
+                  <i className="fa-solid fa-check-circle text-green-500 mr-1"></i>
+                  {selectedMonths.length} month(s) selected
+                </div>
+              )}
+            </div>
+          )}
 
-                    <tbody>
-                      {Array.isArray(availableFees) &&
-                        availableFees.map((monthData) =>
-                          monthData.fees.map((fee, index) => {
-                            const rowKey = `${monthData.month}-${fee.fee_id}`;
-                            const isSelectable = fee.status !== "Paid";
-                            const isChecked = selectedFeeIds.includes(rowKey);
+          {/* Fee Tables */}
+          {(availableFees.length > 0 || annualFees.length > 0) &&
+            selectedStudent && (
+              <div className="mt-8">
+                <h2 className="text-2xl font-bold mb-6 text-center text-gray-900 dark:text-gray-100">
+                  Fee Details for {selectedStudent.student_name || selectedStudent.name}
+                </h2>
 
-                            const original =
-                              parseFloat(fee.original_amount) || 0;
+                {/* Annual Fees - WITH SELECT CHECKBOX */}
+                {annualFees.length > 0 && (
+                  <div className="mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xl font-semibold">Annual Fees</h3>
+                      <button
+                        type="button"
+                        onClick={handleSelectAllAnnualFees}
+                        className="btn btn-sm btn-outline btn-secondary"
+                      >
+                        {selectedFeeIds.length === annualFees.length ? "Deselect All" : "Select All"}
+                      </button>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="table w-full border">
+                        <thead className="bg-base-200">
+                          <tr>
+                            <th className="w-12">Select</th>
+                            <th>Fee Type</th>
+                            <th>Original</th>
+                            <th>Paid</th>
+                            <th>Due</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {annualFees.map((fee) => {
+                            const original = parseFloat(fee.original_amount) || 0;
                             const paid = parseFloat(fee.paid_amount) || 0;
-                            // const due = Math.max(original - paid, 0);
                             const due = parseFloat(fee.due_amount) || 0;
+                            const isSelected = selectedFeeIds.includes(fee.fee_id);
+                            const isPaid = due <= 0;
 
                             return (
-                              <tr key={rowKey} className="hover">
-                                {/* Month Column */}
-                                {index === 0 && (
-                                  <td
-                                    rowSpan={monthData.fees.length}
-                                    className="font-semibold bg-base-100 align-top px-4 py-2"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <span>{monthData.month}</span>
-                                      <input
-                                        type="checkbox"
-                                        className="checkbox checkbox-sm checkbox-primary"
-                                        checked={monthData.fees
-                                          .filter((f) => f.status !== "Paid")
-                                          .every((f) =>
-                                            selectedFeeIds.includes(
-                                              `${monthData.month}-${f.fee_id}`,
-                                            ),
-                                          )}
-                                        onChange={(e) =>
-                                          handleMonthSelection(
-                                            monthData,
-                                            e.target.checked,
-                                          )
-                                        }
-                                      />
-                                    </div>
-                                  </td>
-                                )}
-
-                                {/* Fee Type */}
-                                <td>{fee.fee_type}</td>
-
-                                {/* Amounts */}
+                              <tr key={fee.fee_id} className="hover">
+                                <td>
+                                  <input
+                                    type="checkbox"
+                                    className="checkbox checkbox-primary"
+                                    checked={isSelected}
+                                    onChange={() => handleAnnualFeeSelect(fee.fee_id)}
+                                    disabled={isPaid}
+                                  />
+                                </td>
+                                <td className="font-medium">{fee.fee_type}</td>
                                 <td>₹{original.toFixed(2)}</td>
                                 <td>₹{paid.toFixed(2)}</td>
-                                <td className={due > 0 ? "text-warning" : ""}>
+                                <td className={due > 0 ? "text-warning font-semibold" : ""}>
                                   ₹{due.toFixed(2)}
                                 </td>
-
-                                {/* Status */}
                                 <td>
                                   {fee.status === "Paid" ? (
                                     <span className="badge badge-success text-gray-900 dark:text-white">
@@ -861,111 +1153,150 @@ export const AdmissionFees = () => {
                                     </span>
                                   )}
                                 </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
-                                {/* Select */}
+                {/* Monthly Tuition - WITH AMOUNT TO COLLECT INPUT */}
+                <div>
+                  <h3 className="text-xl font-semibold mb-4">
+                    Monthly Tuition Fees
+                    {selectedMonths.length > 0 && (
+                      <span className="text-sm font-normal text-gray-500 ml-2">
+                        (Showing {selectedMonths.length} selected months)
+                      </span>
+                    )}
+                  </h3>
+                  {monthlyGroups.length === 0 ? (
+                    <div className="text-center py-4 text-gray-500">
+                      {selectedMonths.length === 0
+                        ? "Please select months from above to view tuition fees."
+                        : "No Tuition fees found for the selected months."}
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="table w-full border">
+                        <thead className="bg-base-200">
+                          <tr>
+                            <th>Month</th>
+                            <th>Fee Type</th>
+                            <th>Original</th>
+                            <th>Paid</th>
+                            <th>Due</th>
+                            <th>Status</th>
+                            <th>Amount to Collect</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {monthlyGroups.map((group) => {
+                            const due = parseFloat(group.fee.due_amount) || 0;
+                            const original = parseFloat(group.fee.original_amount) || 0;
+                            const paid = parseFloat(group.fee.paid_amount) || 0;
+                            const status = group.fee.status;
+                            const sel = selectedGroups[group.id] || {
+                              checked: true,
+                              collectAmount: due,
+                            };
+                            const isPaid = due <= 0;
+
+                            return (
+                              <tr key={group.id} className="hover">
+                                <td className="font-semibold">{group.label}</td>
+                                <td>{group.fee.fee_type}</td>
+                                <td>₹{original.toFixed(2)}</td>
+                                <td>₹{paid.toFixed(2)}</td>
+                                <td className={due > 0 ? "text-warning font-semibold" : ""}>
+                                  ₹{due.toFixed(2)}
+                                </td>
                                 <td>
-                                  {isSelectable ? (
+                                  {status === "Paid" ? (
+                                    <span className="badge badge-success text-gray-900 dark:text-white">
+                                      Paid
+                                    </span>
+                                  ) : status === "Partial" ? (
+                                    <span className="badge badge-warning text-gray-900 dark:text-white">
+                                      Partial
+                                    </span>
+                                  ) : (
+                                    <span className="badge badge-error text-gray-900 dark:text-white">
+                                      Pending
+                                    </span>
+                                  )}
+                                </td>
+                                <td>
+                                  <div className="flex items-center gap-1">
                                     <input
-                                      type="checkbox"
-                                      className="checkbox checkbox-primary"
-                                      checked={isChecked}
+                                      type="number"
+                                      className="input input-bordered input-sm w-24 focus:outline-none"
+                                      min="0"
+                                      max={due}
+                                      step="1"
+                                      value={sel.collectAmount}
                                       onChange={(e) =>
-                                        handleFeeSelection(
-                                          rowKey,
-                                          e.target.checked,
+                                        handleGroupCollectChange(
+                                          group.id,
+                                          e.target.value
                                         )
                                       }
+                                      disabled={isPaid}
                                     />
-                                  ) : (
-                                    <i className="fa-solid fa-check text-success"></i>
-                                  )}
+                                    {due > 0 && (
+                                      <span className="text-xs text-gray-500">
+                                        (max: ₹{due.toFixed(0)})
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             );
-                          }),
-                        )}
-                    </tbody>
-                  </table>
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
+
+                {/* Payment Summary */}
+                {(selectedFeeIds.length > 0 ||
+                  Object.values(selectedGroups).some((g) => g && g.checked && g.collectAmount > 0)) && (
+                    <div className="bg-base-300 p-4 rounded-lg mt-6">
+                      <h3 className="text-lg font-semibold mb-2">
+                        Payment Summary
+                      </h3>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="font-bold text-lg mt-2 border-t pt-2">
+                          Total Payable Now:
+                        </div>
+                        <div className="text-right font-bold text-lg mt-2 border-t pt-2 text-primary">
+                          ₹{totalAmount.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
               </div>
+            )}
 
-              {/* Payment Summary */}
-              {/* Payment Summary */}
-              {selectedFeeIds.length > 0 && (
-                <div className="bg-base-300 p-4 rounded-lg mt-6">
-                  <h3 className="text-lg font-semibold mb-2">
-                    Payment Summary
-                  </h3>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    {parseFloat(totalAmount.baseAmount) > 0 && (
-                      <>
-                        <div>Base Amount:</div>
-                        <div className="text-right">
-                          ₹{parseFloat(totalAmount.baseAmount).toFixed(2)}
-                        </div>
-                      </>
-                    )}
-
-                    {parseFloat(totalAmount.paidAmount) > 0 && (
-                      <>
-                        <div>Already Paid:</div>
-                        <div className="text-right">
-                          - ₹{parseFloat(totalAmount.paidAmount).toFixed(2)}
-                        </div>
-                      </>
-                    )}
-
-                    {parseFloat(totalAmount.penaltyAmount) > 0 && (
-                      <>
-                        <div className="text-error">Penalty Charges:</div>
-                        <div className="text-right text-error">
-                          + ₹{parseFloat(totalAmount.penaltyAmount).toFixed(2)}
-                        </div>
-                      </>
-                    )}
-
-                    {parseFloat(totalAmount.dueAmount) > 0 && (
-                      <>
-                        <div className="font-bold mt-2 border-t pt-2">
-                          Due Amount:
-                        </div>
-                        <div className="text-right font-bold mt-2 border-t pt-2">
-                          ₹{parseFloat(totalAmount.dueAmount).toFixed(2)}
-                        </div>
-                      </>
-                    )}
-
-                    <div className="font-bold text-lg mt-2 border-t pt-2">
-                      Total Payable Now:
-                    </div>
-                    <div className="text-right font-bold text-lg mt-2 border-t pt-2 text-primary">
-                      ₹{parseFloat(totalAmount.totalAmount).toFixed(2)}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* No Fees Message */}
           {!isLoadingFees &&
             availableFees.length === 0 &&
+            annualFees.length === 0 &&
             selectedStudentId && (
               <div className="text-center mt-8 text-gray-500">
                 No fees found for the selected student and year.
               </div>
             )}
 
-          {/* Payment Details - Dynamic grid based on payment mode */}
+          {/* Payment Details - Paid Amount is auto-filled and read-only */}
           <div
-            className={`grid gap-6 mt-6 ${
-              selectedPaymentMode === "cheque"
+            className={`grid gap-6 mt-6 ${selectedPaymentMode === "cheque"
                 ? "grid-cols-1 md:grid-cols-3"
                 : "grid-cols-1 md:grid-cols-2"
-            }`}
+              }`}
           >
-            {/* Paid Amount */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
@@ -975,33 +1306,17 @@ export const AdmissionFees = () => {
               </label>
               <input
                 type="number"
-                className={`input w-full focus:outline-none ${
-                  errors.paid_amount ? "input-error" : "input-bordered"
-                }`}
+                className={`input w-full focus:outline-none bg-gray-100 ${errors.paid_amount ? "input-error" : "input-bordered"
+                  }`}
                 {...register("paid_amount", {
                   required: "Amount is required",
-                  min: { value: 0, message: "Amount must be positive" },
-                  max: {
-                    value: totalAmount.totalAmount,
-                    message: `Amount cannot exceed ₹${totalAmount.totalAmount.toFixed(
-                      2,
-                    )}`,
-                  },
+                  min: { value: 0.01},
                 })}
                 value={watch("paid_amount")}
-                disabled={selectedFeeIds.length === 0 || !isPaymentModeSelected}
-                onChange={(e) => {
-                  const value = parseFloat(e.target.value);
-                  if (value > totalAmount.totalAmount) {
-                    setValue("paid_amount", totalAmount.totalAmount.toFixed(2));
-                  } else {
-                    setValue("paid_amount", e.target.value);
-                  }
-                }}
+                readOnly
+                disabled
                 step="1"
-                max={totalAmount.totalAmount}
               />
-
               {errors.paid_amount && (
                 <label className="label">
                   <span className="label-text-alt text-error">
@@ -1009,9 +1324,11 @@ export const AdmissionFees = () => {
                   </span>
                 </label>
               )}
+              <span className="text-xs text-gray-500 mt-1">
+                Amount auto-calculated from selected fees
+              </span>
             </div>
 
-            {/* Cheque Number Field - Only show when payment mode is cheque */}
             {selectedPaymentMode === "cheque" && (
               <div className="form-control">
                 <label className="label">
@@ -1022,9 +1339,8 @@ export const AdmissionFees = () => {
                 </label>
                 <input
                   type="text"
-                  className={`input w-full focus:outline-none ${
-                    errors.cheque_number ? "input-error" : "input-bordered"
-                  }`}
+                  className={`input w-full focus:outline-none ${errors.cheque_number ? "input-error" : "input-bordered"
+                    }`}
                   {...register("cheque_number", {
                     required:
                       selectedPaymentMode === "cheque"
@@ -1045,7 +1361,9 @@ export const AdmissionFees = () => {
                   })}
                   placeholder="Enter cheque number"
                   disabled={
-                    selectedFeeIds.length === 0 || !isPaymentModeSelected
+                    (selectedFeeIds.length === 0 &&
+                      !Object.values(selectedGroups).some((g) => g && g.checked && g.collectAmount > 0)) ||
+                    !isPaymentModeSelected
                   }
                 />
                 {errors.cheque_number && (
@@ -1058,7 +1376,6 @@ export const AdmissionFees = () => {
               </div>
             )}
 
-            {/* Remarks - This will occupy the third column when cheque is selected, second when not */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
@@ -1069,9 +1386,8 @@ export const AdmissionFees = () => {
               <input
                 type="text"
                 maxLength={25}
-                className={`input w-full focus:outline-none ${
-                  errors.remarks ? "input-error" : "input-bordered"
-                }`}
+                className={`input w-full focus:outline-none ${errors.remarks ? "input-error" : "input-bordered"
+                  }`}
                 {...register("remarks", {
                   required: "Remarks are required",
                   minLength: {
@@ -1084,7 +1400,11 @@ export const AdmissionFees = () => {
                   },
                 })}
                 placeholder="Enter any remarks"
-                disabled={selectedFeeIds.length === 0 || !isPaymentModeSelected}
+                disabled={
+                  (selectedFeeIds.length === 0 &&
+                    !Object.values(selectedGroups).some((g) => g && g.checked && g.collectAmount > 0)) ||
+                  !isPaymentModeSelected
+                }
               />
               {errors.remarks && (
                 <label className="label">
@@ -1096,15 +1416,14 @@ export const AdmissionFees = () => {
             </div>
           </div>
 
-          {/* Submit Button */}
+          {/* Submit */}
           <div className="flex justify-center mt-10">
             <button
               type="submit"
-              className={`btn bgTheme text-white w-52 ${
-                isSubmitDisabled
+              className={`btn bgTheme text-white w-52 ${isSubmitDisabled
                   ? "opacity-50 cursor-not-allowed"
                   : "hover:bg-purple-700"
-              }`}
+                }`}
               disabled={isSubmitDisabled}
             >
               {isSubmitting || isRedirecting ? (
@@ -1112,7 +1431,6 @@ export const AdmissionFees = () => {
               ) : (
                 <i className="fa-solid fa-money-bill-wave ml-2"></i>
               )}
-
               {isSubmitting || isRedirecting
                 ? "Redirecting..."
                 : "Submit Payment"}
@@ -1120,7 +1438,7 @@ export const AdmissionFees = () => {
           </div>
         </form>
 
-        {/* Payment Status Dialogs */}
+        {/* Online Payment Dialog */}
         {showPaymentDialog && paymentStatus && (
           <PaymentStatusDialog
             paymentStatus={paymentStatus}
@@ -1132,6 +1450,7 @@ export const AdmissionFees = () => {
           />
         )}
 
+        {/* Cash/Cheque Payment Dialog */}
         {showPaymentDialog1 && paymentStatus && (
           <PaymentStatusDialogOffline
             paymentStatus={paymentStatus}
@@ -1142,7 +1461,20 @@ export const AdmissionFees = () => {
             }}
           />
         )}
+
+        {/* Receipt Modal */}
+        {showReceiptModal && (
+          <ReceiptModal
+            receiptData={receiptData}
+            onClose={() => {
+              setShowReceiptModal(false);
+              setReceiptData(null);
+              window.location.reload();
+            }}
+            isLoading={isLoadingReceipt}
+          />
+        )}
       </div>
     </div>
   );
-};
+};  

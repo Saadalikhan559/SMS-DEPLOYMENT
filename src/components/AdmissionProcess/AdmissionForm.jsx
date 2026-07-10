@@ -2200,435 +2200,434 @@ useEffect(() => {
             </div>
           </div>
         </div>
-        <div className="bg-base-200 p-6 rounded-box mb-6">
-          <h2 className="text-2xl font-bold mb-4">Residential Address</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {/* House Number */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text flex items-center gap-2">
-                  <i className="fa-solid fa-home text-sm"></i>
-                  House Number
-                </span>
-              </label>
-              <input
-                type="number"
-                {...register("address_input.house_no", {
-                  min: { value: -2147483648, message: "Invalid house number" },
-                  max: { value: 2147483647, message: "Invalid house number" },
-                })}
-                placeholder="House Number"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.address?.house_no ? "input-error" : ""
-                }`}
-              />
-              {errors.address?.house_no && (
-                <span className="text-error text-sm">
-                  {errors.address.house_no.message}
-                </span>
-              )}
-            </div>
+   <div className="bg-base-200 p-6 rounded-box mb-6">
+  <h2 className="text-2xl font-bold mb-4">Residential Address</h2>
+  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+    {/* House Number - OPTIONAL */}
+    <div className="form-control">
+      <label className="label">
+        <span className="label-text flex items-center gap-2">
+          <i className="fa-solid fa-home text-sm"></i>
+          House Number
+        </span>
+      </label>
+      <input
+        type="number"
+        {...register("address_input.house_no", {
+          validate: (value) => {
+            if (!value || value === "") return true;
+            const num = Number(value);
+            if (isNaN(num)) return "Invalid house number";
+            if (num < -2147483648 || num > 2147483647) return "Invalid house number";
+            return true;
+          }
+        })}
+        placeholder="House Number"
+        className={`input input-bordered w-full focus:outline-none ${
+          errors.address_input?.house_no ? "input-error" : ""
+        }`}
+        onKeyDown={(e) => {
+          if (e.key === "-" || e.key === "e") e.preventDefault();
+        }}
+        onWheel={(e) => e.target.blur()}
+      />
+      {errors.address_input?.house_no && (
+        <span className="text-error text-sm">
+          {errors.address_input.house_no.message}
+        </span>
+      )}
+    </div>
 
-            {/* Habitation */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text flex items-center gap-2">
-                  <i className="fa-solid fa-map-location text-sm"></i>
-                  Habitation
-                </span>
-              </label>
-              <input
-                type="text"
-                {...register("address_input.habitation", {
-                  maxLength: {
-                    value: 100,
-                    message: "Habitation cannot exceed 100 characters",
-                  },
-                })}
-                placeholder="Habitation"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.address?.habitation ? "input-error" : ""
-                }`}
-              />
-              {errors.address?.habitation && (
-                <span className="text-error text-sm">
-                  {errors.address.habitation.message}
-                </span>
-              )}
-            </div>
+    {/* Habitation - OPTIONAL */}
+    <div className="form-control">
+      <label className="label">
+        <span className="label-text flex items-center gap-2">
+          <i className="fa-solid fa-map-location text-sm"></i>
+          Habitation
+        </span>
+      </label>
+      <input
+        type="text"
+        {...register("address_input.habitation", {
+          maxLength: {
+            value: 100,
+            message: "Habitation cannot exceed 100 characters",
+          },
+        })}
+        placeholder="Habitation"
+        className={`input input-bordered w-full focus:outline-none ${
+          errors.address_input?.habitation ? "input-error" : ""
+        }`}
+      />
+      {errors.address_input?.habitation && (
+        <span className="text-error text-sm">
+          {errors.address_input.habitation.message}
+        </span>
+      )}
+    </div>
 
-            {/* Block */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text flex items-center gap-2">
-                  <i className="fa-solid fa-building text-sm"></i>
-                  Block
-                </span>
-              </label>
-              <input
-                type="text"
-                {...register("address_input.block", {
-                  maxLength: {
-                    value: 100,
-                    message: "Block cannot exceed 100 characters",
-                  },
-                })}
-                placeholder="Block"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.address?.block ? "input-error" : ""
-                }`}
-              />
-              {errors.address?.block && (
-                <span className="text-error text-sm">
-                  {errors.address.block.message}
-                </span>
-              )}
-            </div>
+    {/* Block - OPTIONAL */}
+    <div className="form-control">
+      <label className="label">
+        <span className="label-text flex items-center gap-2">
+          <i className="fa-solid fa-building text-sm"></i>
+          Block
+        </span>
+      </label>
+      <input
+        type="text"
+        {...register("address_input.block", {
+          maxLength: {
+            value: 100,
+            message: "Block cannot exceed 100 characters",
+          },
+        })}
+        placeholder="Block"
+        className={`input input-bordered w-full focus:outline-none ${
+          errors.address_input?.block ? "input-error" : ""
+        }`}
+      />
+      {errors.address_input?.block && (
+        <span className="text-error text-sm">
+          {errors.address_input.block.message}
+        </span>
+      )}
+    </div>
 
-            {/* Ward Number */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text flex items-center gap-2">
-                  <i className="fa-solid fa-map text-sm"></i>
-                  Ward Number
-                </span>
-              </label>
-              <input
-                type="number"
-                placeholder="Ward Number"
-                min={0}
-                className="input input-bordered w-full focus:outline-none"
-                {...register("address_input.ward_no")}
-                onKeyDown={(e) => {
-                  if (e.key === "-" || e.key === "e") e.preventDefault();
-                }}
-                onWheel={(e) => e.target.blur()}
-              />
-            </div>
+    {/* Ward Number - OPTIONAL */}
+    <div className="form-control">
+      <label className="label">
+        <span className="label-text flex items-center gap-2">
+          <i className="fa-solid fa-map text-sm"></i>
+          Ward Number
+        </span>
+      </label>
+      <input
+        type="number"
+        placeholder="Ward Number"
+        min={0}
+        className="input input-bordered w-full focus:outline-none"
+        {...register("address_input.ward_no")}
+        onKeyDown={(e) => {
+          if (e.key === "-" || e.key === "e") e.preventDefault();
+        }}
+        onWheel={(e) => e.target.blur()}
+      />
+    </div>
+  </div>
+
+  <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
+    {/* Zone - OPTIONAL */}
+    <div className="form-control">
+      <label className="label">
+        <span className="label-text flex items-center gap-2">
+          <i className="fa-solid fa-map-pin text-sm"></i>
+          Zone
+        </span>
+      </label>
+      <input
+        type="number"
+        placeholder="Zone"
+        min={0}
+        className="input input-bordered w-full focus:outline-none"
+        {...register("address_input.zone_no")}
+        onKeyDown={(e) => {
+          if (e.key === "-" || e.key === "e") e.preventDefault();
+        }}
+        onWheel={(e) => e.target.blur()}
+      />
+    </div>
+
+    {/* District - OPTIONAL */}
+    <div className="form-control">
+      <label className="label">
+        <span className="label-text flex items-center gap-2">
+          <i className="fa-solid fa-map text-sm"></i>
+          District
+        </span>
+      </label>
+      <input
+        type="text"
+        {...register("address_input.district", {
+          maxLength: {
+            value: 50,
+            message: "District cannot exceed 100 characters",
+          },
+        })}
+        placeholder="District"
+        className={`input input-bordered w-full focus:outline-none ${
+          errors.address_input?.district ? "input-error" : ""
+        }`}
+      />
+      {errors.address_input?.district && (
+        <span className="text-error text-sm">
+          {errors.address_input.district.message}
+        </span>
+      )}
+    </div>
+
+    {/* City - OPTIONAL */}
+    <div className="form-control relative">
+      <label className="label">
+        <span className="label-text flex items-center gap-2">
+          <i className="fa-solid fa-city text-sm"></i>
+          City
+        </span>
+      </label>
+      <div
+        className={`input input-bordered w-full flex items-center justify-between cursor-pointer ${
+          errors.address_input?.city ? "input-error" : ""
+        }`}
+        onClick={() => setShowCityDropdown(!showCityDropdown)}
+      >
+        <span className="text-gray-700 dark:text-gray-200">
+          {selectedCityName || "Select City"}
+        </span>
+      </div>
+
+      {showCityDropdown && (
+        <div className="absolute z-10 bg-white dark:bg-[#242627] rounded w-full mt-1 shadow-lg border border-gray-300 dark:border-gray-600">
+          <div className="p-2 sticky top-0 shadow-sm bg-white dark:bg-[#242627]">
+            <input
+              type="text"
+              placeholder="Search City..."
+              className="input input-bordered w-full focus:outline-none bg-white dark:bg-[#242627] text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-500"
+              value={citySearchInput}
+              onChange={(e) => setCitySearchInput(e.target.value)}
+            />
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
-            {/* Zone */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text flex items-center gap-2">
-                  <i className="fa-solid fa-map-pin text-sm"></i>
-                  Zone
-                </span>
-              </label>
-              <input
-                type="number"
-                placeholder="Zone"
-                min={0}
-                className="input input-bordered w-full focus:outline-none"
-                {...register("address_input.zone_no")}
-                onKeyDown={(e) => {
-                  if (e.key === "-" || e.key === "e") e.preventDefault();
-                }}
-                onWheel={(e) => e.target.blur()}
-              />
-            </div>
-
-            {/* District */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text flex items-center gap-2">
-                  <i className="fa-solid fa-map text-sm"></i>
-                  District
-                </span>
-              </label>
-              <input
-                type="text"
-                {...register("address_input.district", {
-                  maxLength: {
-                    value: 50,
-                    message: "District cannot exceed 100 characters",
-                  },
-                })}
-                placeholder="District"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.address?.district ? "input-error" : ""
-                }`}
-              />
-              {errors.address?.district && (
-                <span className="text-error text-sm">
-                  {errors.address.district.message}
-                </span>
-              )}
-            </div>
-
-            {/* City */}
-            <div className="form-control relative">
-              <label className="label">
-                <span className="label-text flex items-center gap-2">
-                  <i className="fa-solid fa-city text-sm"></i>
-                  City
-                </span>
-              </label>
-
-              {/* Custom dropdown input */}
-              <div
-                className={`input input-bordered w-full flex items-center justify-between cursor-pointer ${
-                  errors.address_input?.city ? "input-error" : ""
-                }`}
-                onClick={() => setShowCityDropdown(!showCityDropdown)}
-              >
-                <span className="text-gray-700 dark:text-gray-200">
-                  {selectedCityName || "Select City"}
-                </span>
-              </div>
-
-              {/* Dropdown menu */}
-              {showCityDropdown && (
-                <div className="absolute z-10 bg-white dark:bg-[#242627] rounded w-full mt-1 shadow-lg border border-gray-300 dark:border-gray-600">
-                  {/* Search input */}
-                  <div className="p-2 sticky top-0 shadow-sm bg-white dark:bg-[#242627]">
-                    <input
-                      type="text"
-                      placeholder="Search City..."
-                      className="input input-bordered w-full focus:outline-none bg-white dark:bg-[#242627] text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-500"
-                      value={citySearchInput}
-                      onChange={(e) => setCitySearchInput(e.target.value)}
-                    />
-                  </div>
-
-                  {/* Filtered city list */}
-                  <div className="max-h-40 overflow-y-auto">
-                    {filteredCities.length > 0 ? (
-                      filteredCities.map((city) => (
-                        <p
-                          key={city.id}
-                          className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer text-gray-800 dark:text-gray-200 capitalize"
-                          onClick={() => {
-                            setValue("address_input.city", city.id.toString(), {
-                              shouldValidate: true,
-                            });
-                            setSelectedCityName(city.name);
-                            setCitySearchInput("");
-                            setShowCityDropdown(false);
-                          }}
-                        >
-                          {city.name}
-                        </p>
-                      ))
-                    ) : (
-                      <p className="p-2 text-gray-500 dark:text-gray-400">
-                        No cities found
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Validation error */}
-              {errors.address_input?.city && (
-                <span className="text-error text-sm">
-                  {errors.address_input.city.message}
-                </span>
-              )}
-            </div>
-
-            {/* Division */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text flex items-center gap-2">
-                  <i className="fa-solid fa-map-signs text-sm"></i>
-                  Division
-                </span>
-              </label>
-              <input
-                type="text"
-                {...register("address_input.division", {
-                  maxLength: {
-                    value: 20,
-                    message: "Division cannot exceed 20 characters",
-                  },
-                })}
-                placeholder="Division"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.address?.division ? "input-error" : ""
-                }`}
-              />
-              {errors.address?.division && (
-                <span className="text-error text-sm">
-                  {errors.address.division.message}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6 items-start">
-            {/* State */}
-            <div className="form-control relative">
-              <label className="label">
-                <span className="label-text flex items-center gap-2">
-                  <i className="fa-solid fa-flag text-sm"></i> State
-                </span>
-              </label>
-              <div
-                className={`input input-bordered w-full flex items-center cursor-pointer py-2`}
-                onClick={() => setShowStateDropdown(!showStateDropdown)}
-              >
-                <span className="text-gray-700 dark:text-gray-200">
-                  {selectedStateName || "Select State"}
-                </span>
-                {/* Arrow removed */}
-              </div>
-
-              {showStateDropdown && (
-                <div className="absolute z-10 bg-white dark:bg-[#242627] rounded w-full mt-1 shadow-lg border border-gray-300 dark:border-gray-600">
-                  <div className="p-2 sticky top-0 shadow-sm bg-white dark:bg-[#242627]">
-                    <input
-                      type="text"
-                      placeholder="Search State..."
-                      className="input input-bordered w-full focus:outline-none bg-white dark:bg-[#242627] text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-500 py-1"
-                      value={stateSearchInput}
-                      onChange={(e) => setStateSearchInput(e.target.value)}
-                    />
-                  </div>
-                  <div className="max-h-40 overflow-y-auto">
-                    {filteredStates.length > 0 ? (
-                      filteredStates.map((state) => (
-                        <p
-                          key={state.id}
-                          className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer text-gray-800 dark:text-gray-200 capitalize"
-                          onClick={() => {
-                            setValue(
-                              "address_input.state",
-                              state.id.toString(),
-                              { shouldValidate: true }
-                            );
-                            setSelectedStateName(state.name);
-                            setStateSearchInput("");
-                            setShowStateDropdown(false);
-                          }}
-                        >
-                          {state.name}
-                        </p>
-                      ))
-                    ) : (
-                      <p className="p-2 text-gray-500 dark:text-gray-400">
-                        No states found
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Country */}
-            <div className="form-control relative">
-              <label className="label">
-                <span className="label-text flex items-center gap-2">
-                  <i className="fa-solid fa-globe text-sm"></i> Country
-                </span>
-              </label>
-              <div
-                className={`input input-bordered w-full flex items-center cursor-pointer py-2`}
-                onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-              >
-                <span className="text-gray-700 dark:text-gray-200">
-                  {selectedCountryName || "Select Country"}
-                </span>
-                {/* Arrow removed */}
-              </div>
-
-              {showCountryDropdown && (
-                <div className="absolute z-10 bg-white dark:bg-[#242627] rounded w-full mt-1 shadow-lg border border-gray-300 dark:border-gray-600">
-                  <div className="p-2 sticky top-0 shadow-sm bg-white dark:bg-[#242627]">
-                    <input
-                      type="text"
-                      placeholder="Search Country..."
-                      className="input input-bordered w-full focus:outline-none bg-white dark:bg-[#242627] text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-500 py-1"
-                      value={countrySearchInput}
-                      onChange={(e) => setCountrySearchInput(e.target.value)}
-                    />
-                  </div>
-                  <div className="max-h-40 overflow-y-auto">
-                    {filteredCountries.length > 0 ? (
-                      filteredCountries.map((country) => (
-                        <p
-                          key={country.id}
-                          className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer text-gray-800 dark:text-gray-200 capitalize"
-                          onClick={() => {
-                            setValue(
-                              "address_input.country",
-                              country.id.toString(),
-                              { shouldValidate: true }
-                            );
-                            setSelectedCountryName(country.name);
-                            setCountrySearchInput("");
-                            setShowCountryDropdown(false);
-                          }}
-                        >
-                          {country.name}
-                        </p>
-                      ))
-                    ) : (
-                      <p className="p-2 text-gray-500 dark:text-gray-400">
-                        No countries found
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Pin Code */}
-            <div className="form-control flex flex-col justify-start relative">
-              <label className="label">
-                <span className="label-text flex items-center gap-2">
-                  <i className="fa-solid fa-mailbox text-sm"></i> Pin Code
-                </span>
-              </label>
-              <input
-                type="text"
-                {...register("address_input.area_code", {
-                  pattern: {
-                    value: /^[1-9][0-9]{5}$/,
-                    message: "Enter a valid 6-digit Indian Pincode",
-                  },
-                })}
-                placeholder="Pin Code"
-                className="input input-bordered w-full focus:outline-none py-2"
-              />
-              {errors.address_input?.area_code && (
-                <span className="text-error text-sm mt-1">
-                  {errors.address_input.area_code.message}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 mt-6">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text flex items-center gap-2">
-                  <i className="fa-solid fa-location-dot text-sm"></i>
-                  Full Address Line
-                </span>
-              </label>
-              <textarea
-                maxLength={250}
-                {...register("address_input.address_line", {
-                  maxLength: {
-                    value: 250,
-                    message: "Address line cannot exceed 250 characters",
-                  },
-                })}
-                placeholder="Full Address"
-                className={`textarea textarea-bordered w-full focus:outline-none ${
-                  errors.address?.address_line ? "textarea-error" : ""
-                }`}
-              ></textarea>
-              {errors.address?.address_line && (
-                <span className="text-error text-sm">
-                  {errors.address.address_line.message}
-                </span>
-              )}
-            </div>
+          <div className="max-h-40 overflow-y-auto">
+            {filteredCities.length > 0 ? (
+              filteredCities.map((city) => (
+                <p
+                  key={city.id}
+                  className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer text-gray-800 dark:text-gray-200 capitalize"
+                  onClick={() => {
+                    setValue("address_input.city", city.id.toString(), {
+                      shouldValidate: true,
+                    });
+                    setSelectedCityName(city.name);
+                    setCitySearchInput("");
+                    setShowCityDropdown(false);
+                  }}
+                >
+                  {city.name}
+                </p>
+              ))
+            ) : (
+              <p className="p-2 text-gray-500 dark:text-gray-400">
+                No cities found
+              </p>
+            )}
           </div>
         </div>
+      )}
+      {errors.address_input?.city && (
+        <span className="text-error text-sm">
+          {errors.address_input.city.message}
+        </span>
+      )}
+    </div>
+
+    {/* Division - OPTIONAL */}
+    <div className="form-control">
+      <label className="label">
+        <span className="label-text flex items-center gap-2">
+          <i className="fa-solid fa-map-signs text-sm"></i>
+          Division
+        </span>
+      </label>
+      <input
+        type="text"
+        {...register("address_input.division", {
+          maxLength: {
+            value: 20,
+            message: "Division cannot exceed 20 characters",
+          },
+        })}
+        placeholder="Division"
+        className={`input input-bordered w-full focus:outline-none ${
+          errors.address_input?.division ? "input-error" : ""
+        }`}
+      />
+      {errors.address_input?.division && (
+        <span className="text-error text-sm">
+          {errors.address_input.division.message}
+        </span>
+      )}
+    </div>
+  </div>
+
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6 items-start">
+    {/* State - OPTIONAL */}
+    <div className="form-control relative">
+      <label className="label">
+        <span className="label-text flex items-center gap-2">
+          <i className="fa-solid fa-flag text-sm"></i> State
+        </span>
+      </label>
+      <div
+        className={`input input-bordered w-full flex items-center cursor-pointer py-2`}
+        onClick={() => setShowStateDropdown(!showStateDropdown)}
+      >
+        <span className="text-gray-700 dark:text-gray-200">
+          {selectedStateName || "Select State"}
+        </span>
+      </div>
+
+      {showStateDropdown && (
+        <div className="absolute z-10 bg-white dark:bg-[#242627] rounded w-full mt-1 shadow-lg border border-gray-300 dark:border-gray-600">
+          <div className="p-2 sticky top-0 shadow-sm bg-white dark:bg-[#242627]">
+            <input
+              type="text"
+              placeholder="Search State..."
+              className="input input-bordered w-full focus:outline-none bg-white dark:bg-[#242627] text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-500 py-1"
+              value={stateSearchInput}
+              onChange={(e) => setStateSearchInput(e.target.value)}
+            />
+          </div>
+          <div className="max-h-40 overflow-y-auto">
+            {filteredStates.length > 0 ? (
+              filteredStates.map((state) => (
+                <p
+                  key={state.id}
+                  className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer text-gray-800 dark:text-gray-200 capitalize"
+                  onClick={() => {
+                    setValue("address_input.state", state.id.toString(), {
+                      shouldValidate: true,
+                    });
+                    setSelectedStateName(state.name);
+                    setStateSearchInput("");
+                    setShowStateDropdown(false);
+                  }}
+                >
+                  {state.name}
+                </p>
+              ))
+            ) : (
+              <p className="p-2 text-gray-500 dark:text-gray-400">
+                No states found
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+
+    {/* Country - OPTIONAL */}
+    <div className="form-control relative">
+      <label className="label">
+        <span className="label-text flex items-center gap-2">
+          <i className="fa-solid fa-globe text-sm"></i> Country
+        </span>
+      </label>
+      <div
+        className={`input input-bordered w-full flex items-center cursor-pointer py-2`}
+        onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+      >
+        <span className="text-gray-700 dark:text-gray-200">
+          {selectedCountryName || "Select Country"}
+        </span>
+      </div>
+
+      {showCountryDropdown && (
+        <div className="absolute z-10 bg-white dark:bg-[#242627] rounded w-full mt-1 shadow-lg border border-gray-300 dark:border-gray-600">
+          <div className="p-2 sticky top-0 shadow-sm bg-white dark:bg-[#242627]">
+            <input
+              type="text"
+              placeholder="Search Country..."
+              className="input input-bordered w-full focus:outline-none bg-white dark:bg-[#242627] text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-500 py-1"
+              value={countrySearchInput}
+              onChange={(e) => setCountrySearchInput(e.target.value)}
+            />
+          </div>
+          <div className="max-h-40 overflow-y-auto">
+            {filteredCountries.length > 0 ? (
+              filteredCountries.map((country) => (
+                <p
+                  key={country.id}
+                  className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 cursor-pointer text-gray-800 dark:text-gray-200 capitalize"
+                  onClick={() => {
+                    setValue("address_input.country", country.id.toString(), {
+                      shouldValidate: true,
+                    });
+                    setSelectedCountryName(country.name);
+                    setCountrySearchInput("");
+                    setShowCountryDropdown(false);
+                  }}
+                >
+                  {country.name}
+                </p>
+              ))
+            ) : (
+              <p className="p-2 text-gray-500 dark:text-gray-400">
+                No countries found
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+
+    {/* Pin Code - OPTIONAL with conditional validation */}
+    <div className="form-control flex flex-col justify-start relative">
+      <label className="label">
+        <span className="label-text flex items-center gap-2">
+          <i className="fa-solid fa-mailbox text-sm"></i> Pin Code
+        </span>
+      </label>
+      <input
+        type="text"
+        {...register("address_input.area_code", {
+          validate: (value) => {
+            // Allow empty value
+            if (!value || value === "") return true;
+            // If filled, validate pattern
+            return /^[1-9][0-9]{5}$/.test(value) || "Enter a valid 6-digit Indian Pincode";
+          }
+        })}
+        placeholder="Pin Code"
+        className={`input input-bordered w-full focus:outline-none py-2 ${
+          errors.address_input?.area_code ? "input-error" : ""
+        }`}
+      />
+      {errors.address_input?.area_code && (
+        <span className="text-error text-sm mt-1">
+          {errors.address_input.area_code.message}
+        </span>
+      )}
+    </div>
+  </div>
+
+  <div className="grid grid-cols-1 mt-6">
+    <div className="form-control">
+      <label className="label">
+        <span className="label-text flex items-center gap-2">
+          <i className="fa-solid fa-location-dot text-sm"></i>
+          Full Address Line
+        </span>
+      </label>
+      <textarea
+        maxLength={250}
+        {...register("address_input.address_line", {
+          maxLength: {
+            value: 250,
+            message: "Address line cannot exceed 250 characters",
+          },
+        })}
+        placeholder="Full Address"
+        className={`textarea textarea-bordered w-full focus:outline-none ${
+          errors.address_input?.address_line ? "textarea-error" : ""
+        }`}
+      ></textarea>
+      {errors.address_input?.address_line && (
+        <span className="text-error text-sm">
+          {errors.address_input.address_line.message}
+        </span>
+      )}
+    </div>
+  </div>
+</div>
         {/* Bank Details Section */}
         <div className="bg-base-200 p-6 rounded-box mb-6">
           <h2 className="text-2xl font-bold mb-4">Bank Account Details</h2>

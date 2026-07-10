@@ -11,45 +11,48 @@ const Allclasses = () => {
   const [selectedSession, setSelectedSession] = useState("All");
 
   const getYearLevels = async () => {
-    setLoading(true);
-    setError(null);
+  setLoading(true);
+  setError(null);
 
-    try {
-      const data = await fetchYearLevels();
+  try {
+    const data = await fetchYearLevels();
 
-      const withCounts = await Promise.all(
-        data.map(async (level) => {
-          try {
-            let students;
-            
-            if (selectedSession !== "All") {
-              students = await fetchStudentYearLevelByClass(level.id, selectedSession);
-            } else {
-              students = await fetchStudentYearLevelByClass(level.id);
-            }
-
-            return {
-              ...level,
-              student_count: students.length,
-            };
-          } catch (err) {
-            console.error(`Error fetching students for level ${level.id}:`, err);
-            return {
-              ...level,
-              student_count: 0,
-            };
+    const withCounts = await Promise.all(
+      data.map(async (level) => {
+        try {
+          // Fetch all students for this level
+          const allStudents = await fetchStudentYearLevelByClass(level.id);
+          
+          // Filter based on selected session
+          let filteredStudents = allStudents;
+          if (selectedSession !== "All") {
+            filteredStudents = allStudents.filter(
+              student => student.year_name === selectedSession
+            );
           }
-        })
-      );
 
-      setYearLevels(withCounts);
-    } catch (err) {
-      console.error("Error fetching year levels:", err);
-      setError("Failed to fetch year levels. Please try again later.");
-    } finally {
-      setLoading(false);
-    }
-  };
+          return {
+            ...level,
+            student_count: filteredStudents.length,
+          };
+        } catch (err) {
+          console.error(`Error fetching students for level ${level.id}:`, err);
+          return {
+            ...level,
+            student_count: 0,
+          };
+        }
+      })
+    );
+
+    setYearLevels(withCounts);
+  } catch (err) {
+    console.error("Error fetching year levels:", err);
+    setError("Failed to fetch year levels. Please try again later.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     getYearLevels();

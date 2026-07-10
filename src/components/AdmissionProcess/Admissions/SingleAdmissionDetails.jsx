@@ -346,6 +346,10 @@ export const SingleAdmissionDetails = () => {
                 <p>{details.previous_school_name || "None"}</p>
               </div>
 
+              <div><p className="font-medium">Class Section or Stream</p>
+                <p>{details.class_section || "None"}</p>
+              </div>
+
               <div><p className="font-medium">Previous Standard:</p>
                 <p>{details.previous_standard_studied || "None"}</p>
               </div>
