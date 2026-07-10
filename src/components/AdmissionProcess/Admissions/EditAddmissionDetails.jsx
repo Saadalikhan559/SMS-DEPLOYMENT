@@ -405,14 +405,14 @@ export const EditAddmissionDetails = () => {
         guardian: response.guardian_input || {},
         address: response.address
           ? {
-              ...response.address,
-              country: countryObj?.id || null,
-              state: stateObj?.id || null,
-              city: cityObj?.id || null,
-              country_name: response.address.country_name || "",
-              state_name: response.address.state_name || "",
-              city_name: response.address.city_name || "",
-            }
+            ...response.address,
+            country: countryObj?.id || null,
+            state: stateObj?.id || null,
+            city: cityObj?.id || null,
+            country_name: response.address.country_name || "",
+            state_name: response.address.state_name || "",
+            city_name: response.address.city_name || "",
+          }
           : null,
         banking_detail: response.banking_detail || null,
         guardian_type: response.guardian_type || "",
@@ -664,12 +664,12 @@ export const EditAddmissionDetails = () => {
     // ----- Get dirty values from nested structure -----
     const getDirtyValues = (dirtyFieldsObj, allValuesObj) => {
       if (!dirtyFieldsObj || !allValuesObj) return {};
-      
+
       const result = {};
       Object.keys(dirtyFieldsObj).forEach(key => {
         const dirtyValue = dirtyFieldsObj[key];
         const allValue = allValuesObj[key];
-        
+
         if (typeof dirtyValue === 'object' && !Array.isArray(dirtyValue)) {
           if (allValue && typeof allValue === 'object' && !Array.isArray(allValue)) {
             const nested = getDirtyValues(dirtyValue, allValue);
@@ -684,7 +684,7 @@ export const EditAddmissionDetails = () => {
           }
         }
       });
-      
+
       return result;
     };
 
@@ -701,11 +701,11 @@ export const EditAddmissionDetails = () => {
 
     // ----- Create FormData from dirty fields only -----
     const submitFormData = new FormData();
-    
+
     const appendToFormData = (obj, prefix = '') => {
       Object.entries(obj).forEach(([key, value]) => {
         const fullKey = prefix ? `${prefix}[${key}]` : key;
-        
+
         if (value && typeof value === 'object' && !Array.isArray(value) && value !== null) {
           // Only append if nested object has values
           if (Object.keys(value).length > 0) {
@@ -834,9 +834,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="First Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.first_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.first_name ? "input-error" : ""
+                  }`}
               />
               {errors.student?.first_name && (
                 <span className="text-error text-sm">
@@ -884,9 +883,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="Last Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.last_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.last_name ? "input-error" : ""
+                  }`}
               />
               {errors.student?.last_name && (
                 <span className="text-error text-sm">
@@ -913,9 +911,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="student@example.com"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.email ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.email ? "input-error" : ""
+                  }`}
               />
               {errors.student?.email && (
                 <span className="text-error text-sm">
@@ -933,9 +930,8 @@ export const EditAddmissionDetails = () => {
                 {...register("student.is_active", {
                   required: "Status is required",
                 })}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer ${
-                  errors.student?.is_active ? "select-error" : ""
-                }`}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.student?.is_active ? "select-error" : ""
+                  }`}
                 disabled={true}
               >
                 <option value="">Select Status</option>
@@ -977,9 +973,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 max={new Date().toISOString().split("T")[0]}
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.date_of_birth ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.date_of_birth ? "input-error" : ""
+                  }`}
               />
               {errors.student?.date_of_birth && (
                 <span className="text-error text-sm">
@@ -996,9 +991,8 @@ export const EditAddmissionDetails = () => {
               </label>
               <select
                 {...register("student.gender", {})}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer ${
-                  errors.student?.gender ? "select-error" : ""
-                }`}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.student?.gender ? "select-error" : ""
+                  }`}
               >
                 <option value="">Select Gender</option>
                 <option value="Male">Male</option>
@@ -1029,9 +1023,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="Father's Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.father_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.father_name ? "input-error" : ""
+                  }`}
               />
               {errors.student?.father_name && (
                 <span className="text-error text-sm">
@@ -1055,9 +1048,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="Mother's Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.mother_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.mother_name ? "input-error" : ""
+                  }`}
               />
               {errors.student?.mother_name && (
                 <span className="text-error text-sm">
@@ -1081,9 +1073,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="Religion"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.religion ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.religion ? "input-error" : ""
+                  }`}
               />
               {errors.student?.religion && (
                 <span className="text-error text-sm">
@@ -1102,9 +1093,8 @@ export const EditAddmissionDetails = () => {
               </label>
               <select
                 {...register("student.category", {})}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer ${
-                  errors.student?.category ? "select-error" : ""
-                }`}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.student?.category ? "select-error" : ""
+                  }`}
               >
                 <option value="">Select Category</option>
                 <option value="GEN">General</option>
@@ -1131,9 +1121,8 @@ export const EditAddmissionDetails = () => {
                   min: { value: 0, message: "Height must be positive" },
                 })}
                 placeholder="Height"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.height ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.height ? "input-error" : ""
+                  }`}
               />
               {errors.student?.height && (
                 <span className="text-error text-sm">
@@ -1154,9 +1143,8 @@ export const EditAddmissionDetails = () => {
                   min: { value: 0, message: "Weight must be positive" },
                 })}
                 placeholder="Weight"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.weight ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.weight ? "input-error" : ""
+                  }`}
               />
               {errors.student?.weight && (
                 <span className="text-error text-sm">
@@ -1442,9 +1430,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="Number of Siblings"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.student?.number_of_siblings ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.student?.number_of_siblings ? "input-error" : ""
+                  }`}
               />
               {errors.student?.number_of_siblings && (
                 <span className="text-error text-sm">
@@ -1472,9 +1459,8 @@ export const EditAddmissionDetails = () => {
                     },
                   })}
                   placeholder="RTE Number"
-                  className={`input input-bordered w-full focus:outline-none ${
-                    errors.rte_number ? "input-error" : ""
-                  }`}
+                  className={`input input-bordered w-full focus:outline-none ${errors.rte_number ? "input-error" : ""
+                    }`}
                 />
                 {errors.rte_number && (
                   <span className="text-error text-sm">
@@ -1510,9 +1496,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="First Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.first_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.first_name ? "input-error" : ""
+                  }`}
               />
               {errors.guardian?.first_name && (
                 <span className="text-error text-sm">
@@ -1560,9 +1545,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="Last Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.last_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.last_name ? "input-error" : ""
+                  }`}
               />
               {errors.guardian?.last_name && (
                 <span className="text-error text-sm">
@@ -1588,9 +1572,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="guardian@example.com"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.email ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.email ? "input-error" : ""
+                  }`}
               />
               {errors.guardian?.email && (
                 <span className="text-error text-sm">
@@ -1607,9 +1590,8 @@ export const EditAddmissionDetails = () => {
               </label>
               <select
                 {...register("guardian_type_input")}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer ${
-                  errors.guardian_type_input ? "select-error" : ""
-                }`}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.guardian_type_input ? "select-error" : ""
+                  }`}
                 value={selectedGuardianType}
                 onChange={handleGuardianTypeChange}
               >
@@ -1651,9 +1633,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="Phone Number"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.phone_no ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.phone_no ? "input-error" : ""
+                  }`}
                 onInput={(e) => {
                   e.target.value = e.target.value.replace(/\D/g, "");
                   if (e.target.value.length > 10) {
@@ -1684,9 +1665,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="Annual Income"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.annual_income ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.annual_income ? "input-error" : ""
+                  }`}
               />
               {errors.guardian?.annual_income && (
                 <span className="text-error text-sm">
@@ -1726,9 +1706,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="Qualification"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.qualification ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.qualification ? "input-error" : ""
+                  }`}
               />
               {errors.guardian?.qualification && (
                 <span className="text-error text-sm">
@@ -1754,9 +1733,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="Occupation"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.guardian?.occupation ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.guardian?.occupation ? "input-error" : ""
+                  }`}
               />
               {errors.guardian?.occupation && (
                 <span className="text-error text-sm">
@@ -1792,21 +1770,25 @@ export const EditAddmissionDetails = () => {
         </div>
 
         {/* Academic Information Section */}
+        {/* Academic Information Section */}
         <div className="bg-base-200 p-6 rounded-box mb-6">
           <h2 className="text-2xl font-bold mb-4">Academic Information</h2>
+
+          {/* Row 1: Year Level & School Year */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
                   <i className="fa-solid fa-graduation-cap text-sm"></i>
-                  Year Level
+                  Year Level <span className="text-error">*</span>
                 </span>
               </label>
               <select
-                {...register("year_level", {})}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer ${
-                  errors.year_level ? "select-error" : ""
-                }`}
+                {...register("year_level", {
+                  required: "Year level is required",
+                })}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.year_level ? "select-error" : ""
+                  }`}
               >
                 <option value="">Select Year Level</option>
                 {yearLevel.map((yearlev) => (
@@ -1832,9 +1814,8 @@ export const EditAddmissionDetails = () => {
                 {...register("school_year", {
                   required: "School year is required",
                 })}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer ${
-                  errors.school_year ? "select-error" : ""
-                }`}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.school_year ? "select-error" : ""
+                  }`}
               >
                 <option value="">Select School Year</option>
                 {schoolYears.map((schoolYear) => (
@@ -1850,6 +1831,48 @@ export const EditAddmissionDetails = () => {
               )}
             </div>
           </div>
+
+          {/* Row 2: Class Section & Stream - NEW with required validation */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text flex items-center gap-2">
+                  <i className="fa-solid fa-chalkboard-user text-sm"></i>
+                  Class Section & Stream <span className="text-error">*</span>
+                </span>
+              </label>
+              <select
+                {...register("class_section", {
+                  required: "Class section is required"
+                })}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.class_section ? "select-error" : ""
+                  }`}
+              >
+                <option value="">Select Section or Stream</option>
+                {/* Sections */}
+                <option value="A">Section A</option>
+                <option value="B">Section B</option>
+                <option value="C">Section C</option>
+                <option value="D">Section D</option>
+                {/* Streams */}
+                <option value="PCM">PCM (Physics, Chemistry, Mathematics)</option>
+                <option value="PCB">PCB (Physics, Chemistry, Biology)</option>
+                <option value="COMM">COMM (Commerce)</option>
+              </select>
+              {errors.class_section && (
+                <span className="text-error text-sm">
+                  {errors.class_section.message}
+                </span>
+              )}
+            </div>
+
+            {/* Optional: Extra field if needed */}
+            <div className="form-control">
+              {/* You can add another field here if needed */}
+            </div>
+          </div>
+
+          {/* Row 3: Previous School & Previous Class */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             <div className="form-control">
               <label className="label">
@@ -1868,9 +1891,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="Previous School Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.previous_school_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.previous_school_name ? "input-error" : ""
+                  }`}
               />
               {errors.previous_school_name && (
                 <span className="text-error text-sm">
@@ -1895,9 +1917,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="Previous Class/Grade"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.previous_standard_studied ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.previous_standard_studied ? "input-error" : ""
+                  }`}
               />
               {errors.previous_standard_studied && (
                 <span className="text-error text-sm">
@@ -1906,6 +1927,8 @@ export const EditAddmissionDetails = () => {
               )}
             </div>
           </div>
+
+          {/* Row 4: Admission Date & TC Letter */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             <div className="form-control">
               <label className="label">
@@ -1916,10 +1939,20 @@ export const EditAddmissionDetails = () => {
               </label>
               <input
                 type="date"
-                {...register("admission_date", {})}
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.admission_date ? "input-error" : ""
-                }`}
+                max={new Date().toISOString().split("T")[0]}
+                {...register("admission_date", {
+                  validate: (value) => {
+                    if (!value) return true;
+                    const selectedDate = new Date(value);
+                    const today = new Date();
+                    if (selectedDate > today) {
+                      return "Future dates are not allowed";
+                    }
+                    return true;
+                  },
+                })}
+                className={`input input-bordered w-full focus:outline-none ${errors.admission_date ? "input-error" : ""
+                  }`}
               />
               {errors.admission_date && (
                 <span className="text-error text-sm">
@@ -1927,6 +1960,7 @@ export const EditAddmissionDetails = () => {
                 </span>
               )}
             </div>
+
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
@@ -1938,14 +1972,13 @@ export const EditAddmissionDetails = () => {
                 {...register("tc_letter", {
                   required: "TC letter status is required",
                 })}
-                className={`select select-bordered w-full focus:outline-none cursor-pointer ${
-                  errors.tc_letter ? "select-error" : ""
-                }`}
+                className={`select select-bordered w-full focus:outline-none cursor-pointer ${errors.tc_letter ? "select-error" : ""
+                  }`}
               >
                 <option value="">Select</option>
-                <option value="yes">Yes</option>
                 <option value="no">No</option>
-                <option value="not_applicable">Not applicable</option>
+                <option value="not_applicable">Not Applicable</option>
+                <option value="yes">Yes</option>
               </select>
               {errors.tc_letter && (
                 <span className="text-error text-sm">
@@ -1954,6 +1987,8 @@ export const EditAddmissionDetails = () => {
               )}
             </div>
           </div>
+
+          {/* Row 5: Emergency Contact & Distance */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             <div className="form-control">
               <label className="label">
@@ -1968,8 +2003,7 @@ export const EditAddmissionDetails = () => {
                   required: "Emergency contact is required",
                   pattern: {
                     value: /^[6789]\d{9}$/,
-                    message:
-                      "Emergency contact must start with 6, 7, 8, or 9 and be exactly 10 digits",
+                    message: "Emergency contact must start with 6, 7, 8, or 9 and be exactly 10 digits",
                   },
                   minLength: {
                     value: 10,
@@ -1981,9 +2015,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="Emergency Contact"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.emergency_contact_no ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.emergency_contact_no ? "input-error" : ""
+                  }`}
                 onInput={(e) => {
                   e.target.value = e.target.value.replace(/\D/g, "");
                   if (e.target.value.length > 10) {
@@ -2015,11 +2048,10 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="Distance in km"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.entire_road_distance_from_home_to_school
-                    ? "input-error"
-                    : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.entire_road_distance_from_home_to_school
+                  ? "input-error"
+                  : ""
+                  }`}
               />
               {errors.entire_road_distance_from_home_to_school && (
                 <span className="text-error text-sm">
@@ -2028,6 +2060,8 @@ export const EditAddmissionDetails = () => {
               )}
             </div>
           </div>
+
+          {/* Row 6: Marks */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
             <div className="form-control">
               <label className="label">
@@ -2043,9 +2077,8 @@ export const EditAddmissionDetails = () => {
                   min: { value: 0, message: "Marks cannot be negative" },
                 })}
                 placeholder="Marks Obtained"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.obtain_marks ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.obtain_marks ? "input-error" : ""
+                  }`}
               />
               {errors.obtain_marks && (
                 <span className="text-error text-sm">
@@ -2067,9 +2100,8 @@ export const EditAddmissionDetails = () => {
                   min: { value: 0, message: "Total marks cannot be negative" },
                 })}
                 placeholder="Total Marks"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.total_marks ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.total_marks ? "input-error" : ""
+                  }`}
               />
               {errors.total_marks && (
                 <span className="text-error text-sm">
@@ -2078,6 +2110,7 @@ export const EditAddmissionDetails = () => {
               )}
             </div>
 
+            {/* Previous Percentage Field */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
@@ -2099,9 +2132,8 @@ export const EditAddmissionDetails = () => {
                 })}
                 placeholder="Previous Percentage"
                 step="0.01"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.previous_percentage ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.previous_percentage ? "input-error" : ""
+                  }`}
                 onInput={(e) => {
                   const value = parseFloat(e.target.value);
                   if (value > 100) e.target.value = 100;
@@ -2135,9 +2167,8 @@ export const EditAddmissionDetails = () => {
                   max: { value: 2147483647, message: "Invalid house number" },
                 })}
                 placeholder="House Number"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.address_input?.house_no ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.address_input?.house_no ? "input-error" : ""
+                  }`}
               />
               {errors.address_input?.house_no && (
                 <span className="text-error text-sm">
@@ -2161,9 +2192,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="Habitation"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.address_input?.habitation ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.address_input?.habitation ? "input-error" : ""
+                  }`}
               />
               {errors.address_input?.habitation && (
                 <span className="text-error text-sm">
@@ -2185,9 +2215,8 @@ export const EditAddmissionDetails = () => {
                   max: { value: 2147483647, message: "Invalid ward number" },
                 })}
                 placeholder="Ward Number"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.address_input?.ward_no ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.address_input?.ward_no ? "input-error" : ""
+                  }`}
               />
               {errors.address_input?.ward_no && (
                 <span className="text-error text-sm">
@@ -2209,9 +2238,8 @@ export const EditAddmissionDetails = () => {
                   max: { value: 2147483647, message: "Invalid zone number" },
                 })}
                 placeholder="Zone"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.address_input?.zone_no ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.address_input?.zone_no ? "input-error" : ""
+                  }`}
               />
               {errors.address_input?.zone_no && (
                 <span className="text-error text-sm">
@@ -2237,9 +2265,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="Block"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.address_input?.block ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.address_input?.block ? "input-error" : ""
+                  }`}
               />
               {errors.address_input?.block && (
                 <span className="text-error text-sm">
@@ -2263,9 +2290,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="District"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.address_input?.district ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.address_input?.district ? "input-error" : ""
+                  }`}
               />
               {errors.address_input?.district && (
                 <span className="text-error text-sm">
@@ -2287,9 +2313,8 @@ export const EditAddmissionDetails = () => {
               >
                 {selectedCityName || "Select City"}
                 <i
-                  className={`fa-solid fa-chevron-${
-                    showCityDropdown ? "up" : "down"
-                  } ml-2`}
+                  className={`fa-solid fa-chevron-${showCityDropdown ? "up" : "down"
+                    } ml-2`}
                 ></i>
               </div>
 
@@ -2363,9 +2388,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="Division"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.address_input?.division ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.address_input?.division ? "input-error" : ""
+                  }`}
               />
               {errors.address_input?.division && (
                 <span className="text-error text-sm">
@@ -2389,9 +2413,8 @@ export const EditAddmissionDetails = () => {
               >
                 {selectedStateName || "Select State"}
                 <i
-                  className={`fa-solid fa-chevron-${
-                    showStateDropdown ? "up" : "down"
-                  } ml-2`}
+                  className={`fa-solid fa-chevron-${showStateDropdown ? "up" : "down"
+                    } ml-2`}
                 ></i>
               </div>
 
@@ -2460,9 +2483,8 @@ export const EditAddmissionDetails = () => {
               >
                 {selectedCountryName || "Select Country"}
                 <i
-                  className={`fa-solid fa-chevron-${
-                    showCountryDropdown ? "up" : "down"
-                  } ml-2`}
+                  className={`fa-solid fa-chevron-${showCountryDropdown ? "up" : "down"
+                    } ml-2`}
                 ></i>
               </div>
 
@@ -2532,9 +2554,8 @@ export const EditAddmissionDetails = () => {
                   max: { value: 2147483647, message: "Invalid pin code" },
                 })}
                 placeholder="Pin Code"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.address_input?.area_code ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.address_input?.area_code ? "input-error" : ""
+                  }`}
               />
               {errors.address_input?.area_code && (
                 <span className="text-error text-sm">
@@ -2604,9 +2625,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="Full Name as in Bank"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.banking_detail_input?.holder_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.banking_detail_input?.holder_name ? "input-error" : ""
+                  }`}
                 onInput={(e) => {
                   e.target.value = e.target.value
                     .replace(/[^A-Za-z\s]/g, "")
@@ -2652,9 +2672,8 @@ export const EditAddmissionDetails = () => {
                 type="text"
                 value={bankQuery}
                 placeholder="Search or Add Bank Name"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.banking_detail_input?.bank_name ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.banking_detail_input?.bank_name ? "input-error" : ""
+                  }`}
                 onChange={handleBankInputChange}
                 onFocus={() => {
                   setFilteredBanks(bankNames);
@@ -2758,9 +2777,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="Account Number"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.banking_detail_input?.account_no ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.banking_detail_input?.account_no ? "input-error" : ""
+                  }`}
                 onInput={(e) => {
                   e.target.value = e.target.value.replace(/[^0-9]/g, "");
                 }}
@@ -2805,9 +2823,8 @@ export const EditAddmissionDetails = () => {
                   },
                 })}
                 placeholder="eg: SBIN0001234"
-                className={`input input-bordered w-full focus:outline-none ${
-                  errors.banking_detail_input?.ifsc_code ? "input-error" : ""
-                }`}
+                className={`input input-bordered w-full focus:outline-none ${errors.banking_detail_input?.ifsc_code ? "input-error" : ""
+                  }`}
                 onInput={(e) => {
                   e.target.value = e.target.value
                     .toUpperCase()
