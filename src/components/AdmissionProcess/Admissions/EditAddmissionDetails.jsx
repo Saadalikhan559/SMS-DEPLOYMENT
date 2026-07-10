@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -142,26 +142,6 @@ export const EditAddmissionDetails = () => {
     },
   });
 
-
-  const filterByDirty = (obj, dirty) => {
-  if (typeof dirty === 'boolean') {
-    return dirty ? obj : undefined;
-  }
-  if (obj === null || typeof obj !== 'object') return undefined;
-  const result = {};
-  Object.keys(dirty).forEach((key) => {
-    const childObj = obj[key];
-    const childDirty = dirty[key];
-    if (childDirty !== undefined) {
-      const filtered = filterByDirty(childObj, childDirty);
-      if (filtered !== undefined) {
-        result[key] = filtered;
-      }
-    }
-  });
-  return Object.keys(result).length > 0 ? result : undefined;
-};
-
   // Helper function to check if any bank field is filled
   const checkIfAnyBankFieldFilled = () => {
     const values = getValues();
@@ -178,7 +158,6 @@ export const EditAddmissionDetails = () => {
   // Re-validate bank fields when any bank field changes
   useEffect(() => {
     const subscription = watch((value, { name }) => {
-      // If any bank field changes, validate all bank fields
       if (name?.includes("banking_detail_input")) {
         trigger([
           "banking_detail_input.holder_name",
@@ -374,7 +353,7 @@ export const EditAddmissionDetails = () => {
     }
   };
 
-  const getAdmissionData = async () => {
+  const getAdmissionData = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetchAdmissionDetailsById(id);
@@ -540,13 +519,12 @@ export const EditAddmissionDetails = () => {
     } catch (error) {
       console.error("Error fetching admission details:", error);
       setError(true);
-      // Optionally show a user-friendly error message
       setAlertMessage(`Failed to load admission details: ${error.message}`);
       setShowAlert(true);
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, setValue]);
 
   useEffect(() => {
     getYearLevels();
@@ -556,7 +534,7 @@ export const EditAddmissionDetails = () => {
     getState();
     getCity();
     getAdmissionData();
-  }, [id]);
+  }, [id, getAdmissionData]);
 
   const handleCloseOnly = () => {
     setShowEditSuccessModal(false);
@@ -567,589 +545,202 @@ export const EditAddmissionDetails = () => {
     navigate("/addmissionDetails");
   };
 
+  // 🔥 FIXED: Address fields are optional now
   useEffect(() => {
-    register("address_input.country", {
-      required: "Country is required",
-    });
-
-    register("address_input.state", {
-      required: "State is required",
-    });
-
-    register("address_input.city", {
-      required: "City is required",
-    });
+    register("address_input.country");
+    register("address_input.state");
+    register("address_input.city");
   }, [register]);
 
-  // const onSubmit = async (data) => {
-  //   setLoading(true);
+  // 🔥 FIXED: Main onSubmit function - Only sends dirty fields
+  const onSubmit = async (data) => {
+    setLoading(true);
 
-  //   const submitFormData = new FormData();
+    // ----- Helper functions -----
+    const handleOptionalField = (value) => {
+      if (value === "" || value === undefined || value === null) return null;
+      return value;
+    };
 
-  //   // Enhanced helper functions
-  //   const handleOptionalField = (value) => {
-  //     if (value === "" || value === undefined || value === null) return null;
-  //     return value;
-  //   };
+    const handleOptionalNumber = (value) => {
+      if (value === "" || value === undefined || value === null) return null;
+      const num = parseFloat(value);
+      return isNaN(num) ? null : num;
+    };
 
-  //   const handleOptionalNumber = (value) => {
-  //     if (value === "" || value === undefined || value === null) return null;
-  //     const num = parseFloat(value);
-  //     return isNaN(num) ? null : num;
-  //   };
+    const handleOptionalInteger = (value) => {
+      if (value === "" || value === undefined || value === null) return null;
+      const num = parseInt(value, 10);
+      return isNaN(num) ? null : num;
+    };
 
-  //   const handleOptionalInteger = (value) => {
-  //     if (value === "" || value === undefined || value === null) return null;
-  //     const num = parseInt(value, 10);
-  //     return isNaN(num) ? null : num;
-  //   };
+    const handleDateField = (value) => {
+      if (!value) return null;
+      try {
+        const date = new Date(value);
+        if (isNaN(date.getTime())) return null;
+        return date.toISOString().split("T")[0];
+      } catch {
+        return null;
+      }
+    };
 
-  //   // Fix date handling
-  //   const handleDateField = (value) => {
-  //     if (!value) return null;
+    // ----- पूरा transformedData (सभी फ़ील्ड्स) -----
+    const transformedData = {
+      student: {
+        first_name: data.student.first_name || "",
+        middle_name: handleOptionalField(data.student.middle_name),
+        last_name: handleOptionalField(data.student.last_name),
+        email: data.student.email || "",
+        father_name: handleOptionalField(data.student.father_name),
+        mother_name: handleOptionalField(data.student.mother_name),
+        date_of_birth: handleDateField(data.student.date_of_birth),
+        gender: handleOptionalField(data.student.gender),
+        religion: handleOptionalField(data.student.religion),
+        category: handleOptionalField(data.student.category),
+        height: handleOptionalNumber(data.student.height),
+        weight: handleOptionalNumber(data.student.weight),
+        blood_group: handleOptionalField(data.student.blood_group),
+        number_of_siblings: handleOptionalInteger(data.student.number_of_siblings) || 0,
+        scholar_number: handleOptionalField(data.student.scholar_number),
+        aadhaar_number: handleOptionalField(data.student.aadhaar_number),
+        FMID_number: handleOptionalField(data.student.FMID_number),
+        apaar_number: handleOptionalField(data.student.apaar_number),
+        PEN_number: handleOptionalField(data.student.PEN_number),
+        BPL_number: handleOptionalField(data.student.BPL_number),
+        SSSMID: handleOptionalField(data.student.SSSMID),
+        class_section: handleOptionalField(data.class_section),
+        is_active: data.student.is_active || "true",
+      },
+      guardian: {
+        first_name: handleOptionalField(data.guardian.first_name),
+        middle_name: handleOptionalField(data.guardian.middle_name),
+        last_name: handleOptionalField(data.guardian.last_name),
+        email: handleOptionalField(data.guardian.email),
+        phone_no: handleOptionalField(data.guardian.phone_no),
+        annual_income: handleOptionalNumber(data.guardian.annual_income) || null,
+        means_of_livelihood: data.guardian.means_of_livelihood ? data.guardian.means_of_livelihood : null,
+        qualification: handleOptionalField(data.guardian.qualification),
+        occupation: handleOptionalField(data.guardian.occupation),
+        designation: handleOptionalField(data.guardian.designation),
+      },
+      address_input: {
+        house_no: handleOptionalInteger(data.address_input.house_no),
+        habitation: handleOptionalField(data.address_input.habitation),
+        ward_no: handleOptionalInteger(data.address_input.ward_no),
+        zone_no: handleOptionalInteger(data.address_input.zone_no),
+        block: handleOptionalField(data.address_input.block),
+        district: handleOptionalField(data.address_input.district),
+        division: handleOptionalField(data.address_input.division),
+        area_code: handleOptionalInteger(data.address_input.area_code),
+        country: handleOptionalField(data.address_input.country),
+        state: handleOptionalField(data.address_input.state),
+        city: handleOptionalField(data.address_input.city),
+        address_line: handleOptionalField(data.address_input.address_line),
+      },
+      banking_detail_input: {
+        account_no: handleOptionalInteger(data.banking_detail_input.account_no),
+        ifsc_code: handleOptionalField(data.banking_detail_input.ifsc_code),
+        holder_name: handleOptionalField(data.banking_detail_input.holder_name),
+        bank_name: handleOptionalField(data.banking_detail_input.bank_name),
+      },
+      guardian_type_input: handleOptionalField(data.guardian_type_input),
+      year_level: handleOptionalField(data.year_level),
+      school_year: handleOptionalField(data.school_year),
+      admission_date: handleDateField(data.admission_date),
+      previous_school_name: handleOptionalField(data.previous_school_name),
+      previous_standard_studied: handleOptionalField(data.previous_standard_studied),
+      tc_letter: handleOptionalField(data.tc_letter),
+      emergency_contact_no: handleOptionalField(data.emergency_contact_no),
+      entire_road_distance_from_home_to_school: handleOptionalField(data.entire_road_distance_from_home_to_school),
+      obtain_marks: handleOptionalNumber(data.obtain_marks),
+      total_marks: handleOptionalNumber(data.total_marks),
+      previous_percentage: handleOptionalNumber(data.previous_percentage),
+      is_rte: data.is_rte || false,
+      rte_number: data.is_rte ? handleOptionalField(data.rte_number) : null,
+      enrollment_no: handleOptionalField(data.enrollment_no),
+    };
 
-  //     try {
-  //       const date = new Date(value);
-  //       if (isNaN(date.getTime())) return null;
+    // ----- Get dirty values from nested structure -----
+    const getDirtyValues = (dirtyFieldsObj, allValuesObj) => {
+      if (!dirtyFieldsObj || !allValuesObj) return {};
+      
+      const result = {};
+      Object.keys(dirtyFieldsObj).forEach(key => {
+        const dirtyValue = dirtyFieldsObj[key];
+        const allValue = allValuesObj[key];
+        
+        if (typeof dirtyValue === 'object' && !Array.isArray(dirtyValue)) {
+          if (allValue && typeof allValue === 'object' && !Array.isArray(allValue)) {
+            const nested = getDirtyValues(dirtyValue, allValue);
+            if (Object.keys(nested).length > 0) {
+              result[key] = nested;
+            }
+          }
+        } else if (dirtyValue === true) {
+          // Only include if value is not undefined, null, or empty string
+          if (allValue !== undefined && allValue !== null && allValue !== "") {
+            result[key] = allValue;
+          }
+        }
+      });
+      
+      return result;
+    };
 
-  //       // Format as YYYY-MM-DD
-  //       return date.toISOString().split("T")[0];
-  //     } catch {
-  //       return null;
-  //     }
-  //   };
+    // Get only fields that were actually changed
+    const dirtyTransformed = getDirtyValues(dirtyFields, transformedData);
 
-  //   const transformedData = {
-  //     student: {
-  //       first_name: data.student.first_name || "",
-  //       middle_name: handleOptionalField(data.student.middle_name),
-  //       last_name: handleOptionalField(data.student.last_name),
-  //       email: data.student.email || "",
-  //       father_name: handleOptionalField(data.student.father_name),
-  //       mother_name: handleOptionalField(data.student.mother_name),
-  //       // Fix: Use date handler
-  //       date_of_birth: handleDateField(data.student.date_of_birth),
-  //       gender: handleOptionalField(data.student.gender),
-  //       religion: handleOptionalField(data.student.religion),
-  //       category: handleOptionalField(data.student.category),
-  //       height: handleOptionalNumber(data.student.height),
-  //       weight: handleOptionalNumber(data.student.weight),
-  //       blood_group: handleOptionalField(data.student.blood_group),
-  //       number_of_siblings:
-  //         handleOptionalInteger(data.student.number_of_siblings) || 0,
-  //       scholar_number: handleOptionalField(data.student.scholar_number),
-  //       aadhaar_number: handleOptionalField(data.student.aadhaar_number),
-  //       FMID_number: handleOptionalField(data.student.FMID_number),
-  //       apaar_number: handleOptionalField(data.student.apaar_number),
-  //       PEN_number: handleOptionalField(data.student.PEN_number),
-  //       BPL_number: handleOptionalField(data.student.BPL_number),
-  //       SSSMID: handleOptionalField(data.student.SSSMID),
-  //       class_section: handleOptionalField(data.class_section),
-  //       is_active: data.student.is_active || "true",
-  //     },
-  //     guardian: {
-  //       first_name: handleOptionalField(data.guardian.first_name),
-  //       middle_name: handleOptionalField(data.guardian.middle_name),
-  //       last_name: handleOptionalField(data.guardian.last_name),
-  //       email: handleOptionalField(data.guardian.email),
-  //       phone_no: handleOptionalField(data.guardian.phone_no),
-  //       annual_income:
-  //         handleOptionalNumber(data.guardian.annual_income) || null,
-  //       // Fix means_of_livelihood - don't send if empty
-  //       means_of_livelihood: data.guardian.means_of_livelihood
-  //         ? data.guardian.means_of_livelihood
-  //         : null,
-  //       qualification: handleOptionalField(data.guardian.qualification),
-  //       occupation: handleOptionalField(data.guardian.occupation),
-  //       designation: handleOptionalField(data.guardian.designation),
-  //     },
-  //     address_input: {
-  //       house_no: handleOptionalInteger(data.address_input.house_no),
-  //       habitation: handleOptionalField(data.address_input.habitation),
-  //       ward_no: handleOptionalInteger(data.address_input.ward_no),
-  //       zone_no: handleOptionalInteger(data.address_input.zone_no),
-  //       block: handleOptionalField(data.address_input.block),
-  //       district: handleOptionalField(data.address_input.district),
-  //       division: handleOptionalField(data.address_input.division),
-  //       area_code: handleOptionalInteger(data.address_input.area_code),
-  //       country: handleOptionalField(data.address_input.country),
-  //       state: handleOptionalField(data.address_input.state),
-  //       city: handleOptionalField(data.address_input.city),
-  //       address_line: handleOptionalField(data.address_input.address_line),
-  //     },
-  //     banking_detail_input: {
-  //       account_no: handleOptionalInteger(data.banking_detail_input.account_no),
-  //       ifsc_code: handleOptionalField(data.banking_detail_input.ifsc_code),
-  //       holder_name: handleOptionalField(data.banking_detail_input.holder_name),
-  //       bank_name: handleOptionalField(data.banking_detail_input.bank_name),
-  //     },
-  //     guardian_type_input: handleOptionalField(data.guardian_type_input),
-  //     year_level: handleOptionalField(data.year_level),
-  //     school_year: handleOptionalField(data.school_year),
-  //     admission_date: handleDateField(data.admission_date),
-  //     previous_school_name: handleOptionalField(data.previous_school_name),
-  //     previous_standard_studied: handleOptionalField(
-  //       data.previous_standard_studied
-  //     ),
-  //     tc_letter: handleOptionalField(data.tc_letter),
-  //     emergency_contact_no: handleOptionalField(data.emergency_contact_no),
-  //     entire_road_distance_from_home_to_school: handleOptionalField(
-  //       data.entire_road_distance_from_home_to_school
-  //     ),
-  //     obtain_marks: handleOptionalNumber(data.obtain_marks),
-  //     total_marks: handleOptionalNumber(data.total_marks),
-  //     previous_percentage: handleOptionalNumber(data.previous_percentage),
-  //     is_rte: data.is_rte || false,
-  //     rte_number: data.is_rte ? handleOptionalField(data.rte_number) : null,
-  //     enrollment_no: handleOptionalField(data.enrollment_no),
-  //   };
+    // If no fields were changed
+    if (Object.keys(dirtyTransformed).length === 0) {
+      setAlertMessage("No changes were made to update.");
+      setShowAlert(true);
+      setLoading(false);
+      return;
+    }
 
+    // ----- Create FormData from dirty fields only -----
+    const submitFormData = new FormData();
+    
+    const appendToFormData = (obj, prefix = '') => {
+      Object.entries(obj).forEach(([key, value]) => {
+        const fullKey = prefix ? `${prefix}[${key}]` : key;
+        
+        if (value && typeof value === 'object' && !Array.isArray(value) && value !== null) {
+          // Only append if nested object has values
+          if (Object.keys(value).length > 0) {
+            appendToFormData(value, fullKey);
+          }
+        } else if (value !== null && value !== undefined && value !== "") {
+          submitFormData.append(fullKey, value);
+        }
+      });
+    };
 
-  //   // Build FormData - CRITICAL FIX: Don't append null values
-  //   Object.entries(transformedData).forEach(([key, value]) => {
-  //     if (typeof value === "object" && value !== null) {
-  //       Object.entries(value).forEach(([subKey, subValue]) => {
-  //         // Only append if value is NOT null and NOT undefined
-  //         if (subValue !== null && subValue !== undefined) {
-  //           submitFormData.append(`${key}[${subKey}]`, subValue);
-  //         }
-  //       });
-  //     } else if (value !== null && value !== undefined) {
-  //       submitFormData.append(key, value);
-  //     }
-  //   });
+    appendToFormData(dirtyTransformed);
 
-  //   // Debug: Log FormData contents
-  //   console.log("FormData contents:");
-  //   for (let pair of submitFormData.entries()) {
-  //     console.log(pair[0] + ": " + pair[1]);
-  //   }
+    // Debug log - Check what's being sent
+    console.log("🚀 Fields being updated:");
+    for (let pair of submitFormData.entries()) {
+      console.log(pair[0] + ': ' + pair[1]);
+    }
 
-  //   try {
-  //     await handleEditAdmissionForm(submitFormData, id);
-  //     setShowEditSuccessModal(true);
-  //   } catch (error) {
-  //     console.error("Update error:", error.response?.data || error.message);
-  //     setAlertMessage(
-  //       `Failed to update the form: ${
-  //         error.response?.data?.message || error.message
-  //       }`
-  //     );
-  //     setShowAlert(true);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
-
-//   const onSubmit = async (data) => {
-//   // 1. चेक करें कि कोई फ़ील्ड बदली है या नहीं
-//   const hasDirty = Object.keys(dirtyFields).length > 0;
-//   if (!hasDirty) {
-//     setAlertMessage("कोई बदलाव नहीं किया गया।");
-//     setShowAlert(true);
-//     return;
-//   }
-
-//   setLoading(true);
-
-//   // ----- Helper functions (पहले की तरह) -----
-//   const handleOptionalField = (value) => {
-//     if (value === "" || value === undefined || value === null) return null;
-//     return value;
-//   };
-
-//   const handleOptionalNumber = (value) => {
-//     if (value === "" || value === undefined || value === null) return null;
-//     const num = parseFloat(value);
-//     return isNaN(num) ? null : num;
-//   };
-
-//   const handleOptionalInteger = (value) => {
-//     if (value === "" || value === undefined || value === null) return null;
-//     const num = parseInt(value, 10);
-//     return isNaN(num) ? null : num;
-//   };
-
-//   const handleDateField = (value) => {
-//     if (!value) return null;
-//     try {
-//       const date = new Date(value);
-//       if (isNaN(date.getTime())) return null;
-//       return date.toISOString().split("T")[0];
-//     } catch {
-//       return null;
-//     }
-//   };
-
-//   // ----- पूरा transformedData बनाएँ (सभी फ़ील्ड्स) -----
-//   const transformedData = {
-//     student: {
-//       first_name: data.student.first_name || "",
-//       middle_name: handleOptionalField(data.student.middle_name),
-//       last_name: handleOptionalField(data.student.last_name),
-//       email: data.student.email || "",
-//       father_name: handleOptionalField(data.student.father_name),
-//       mother_name: handleOptionalField(data.student.mother_name),
-//       date_of_birth: handleDateField(data.student.date_of_birth),
-//       gender: handleOptionalField(data.student.gender),
-//       religion: handleOptionalField(data.student.religion),
-//       category: handleOptionalField(data.student.category),
-//       height: handleOptionalNumber(data.student.height),
-//       weight: handleOptionalNumber(data.student.weight),
-//       blood_group: handleOptionalField(data.student.blood_group),
-//       number_of_siblings: handleOptionalInteger(data.student.number_of_siblings) || 0,
-//       scholar_number: handleOptionalField(data.student.scholar_number),
-//       aadhaar_number: handleOptionalField(data.student.aadhaar_number),
-//       FMID_number: handleOptionalField(data.student.FMID_number),
-//       apaar_number: handleOptionalField(data.student.apaar_number),
-//       PEN_number: handleOptionalField(data.student.PEN_number),
-//       BPL_number: handleOptionalField(data.student.BPL_number),
-//       SSSMID: handleOptionalField(data.student.SSSMID),
-//       class_section: handleOptionalField(data.class_section),
-//       is_active: data.student.is_active || "true",
-//     },
-//     guardian: {
-//       first_name: handleOptionalField(data.guardian.first_name),
-//       middle_name: handleOptionalField(data.guardian.middle_name),
-//       last_name: handleOptionalField(data.guardian.last_name),
-//       email: handleOptionalField(data.guardian.email),
-//       phone_no: handleOptionalField(data.guardian.phone_no),
-//       annual_income: handleOptionalNumber(data.guardian.annual_income) || null,
-//       means_of_livelihood: data.guardian.means_of_livelihood ? data.guardian.means_of_livelihood : null,
-//       qualification: handleOptionalField(data.guardian.qualification),
-//       occupation: handleOptionalField(data.guardian.occupation),
-//       designation: handleOptionalField(data.guardian.designation),
-//     },
-//     address_input: {
-//       house_no: handleOptionalInteger(data.address_input.house_no),
-//       habitation: handleOptionalField(data.address_input.habitation),
-//       ward_no: handleOptionalInteger(data.address_input.ward_no),
-//       zone_no: handleOptionalInteger(data.address_input.zone_no),
-//       block: handleOptionalField(data.address_input.block),
-//       district: handleOptionalField(data.address_input.district),
-//       division: handleOptionalField(data.address_input.division),
-//       area_code: handleOptionalInteger(data.address_input.area_code),
-//       country: handleOptionalField(data.address_input.country),
-//       state: handleOptionalField(data.address_input.state),
-//       city: handleOptionalField(data.address_input.city),
-//       address_line: handleOptionalField(data.address_input.address_line),
-//     },
-//     banking_detail_input: {
-//       account_no: handleOptionalInteger(data.banking_detail_input.account_no),
-//       ifsc_code: handleOptionalField(data.banking_detail_input.ifsc_code),
-//       holder_name: handleOptionalField(data.banking_detail_input.holder_name),
-//       bank_name: handleOptionalField(data.banking_detail_input.bank_name),
-//     },
-//     guardian_type_input: handleOptionalField(data.guardian_type_input),
-//     year_level: handleOptionalField(data.year_level),
-//     school_year: handleOptionalField(data.school_year),
-//     admission_date: handleDateField(data.admission_date),
-//     previous_school_name: handleOptionalField(data.previous_school_name),
-//     previous_standard_studied: handleOptionalField(data.previous_standard_studied),
-//     tc_letter: handleOptionalField(data.tc_letter),
-//     emergency_contact_no: handleOptionalField(data.emergency_contact_no),
-//     entire_road_distance_from_home_to_school: handleOptionalField(data.entire_road_distance_from_home_to_school),
-//     obtain_marks: handleOptionalNumber(data.obtain_marks),
-//     total_marks: handleOptionalNumber(data.total_marks),
-//     previous_percentage: handleOptionalNumber(data.previous_percentage),
-//     is_rte: data.is_rte || false,
-//     rte_number: data.is_rte ? handleOptionalField(data.rte_number) : null,
-//     enrollment_no: handleOptionalField(data.enrollment_no),
-//   };
-
-//   // ----- फ़िल्टर फंक्शन: केवल dirty fields रखें -----
-//   const filterByDirty = (obj, dirty) => {
-//     if (typeof dirty === 'boolean') {
-//       return dirty ? obj : undefined;
-//     }
-//     if (obj === null || typeof obj !== 'object') return undefined;
-//     const result = {};
-//     Object.keys(dirty).forEach((key) => {
-//       const childObj = obj[key];
-//       const childDirty = dirty[key];
-//       if (childDirty !== undefined) {
-//         const filtered = filterByDirty(childObj, childDirty);
-//         if (filtered !== undefined) {
-//           result[key] = filtered;
-//         }
-//       }
-//     });
-//     return Object.keys(result).length > 0 ? result : undefined;
-//   };
-
-//   // केवल बदले हुए फ़ील्ड्स वाला ऑब्जेक्ट
-//   const dirtyTransformed = filterByDirty(transformedData, dirtyFields);
-
-//   // अगर filter के बाद कुछ न बचे (सुरक्षा चेक)
-//   if (!dirtyTransformed || Object.keys(dirtyTransformed).length === 0) {
-//     setAlertMessage("कोई बदलाव नहीं किया गया।");
-//     setShowAlert(true);
-//     setLoading(false);
-//     return;
-//   }
-
-//   // ----- FormData बनाएँ केवल dirtyTransformed से -----
-//   const submitFormData = new FormData();
-//   Object.entries(dirtyTransformed).forEach(([key, value]) => {
-//     if (typeof value === 'object' && value !== null) {
-//       Object.entries(value).forEach(([subKey, subValue]) => {
-//         // null या undefined को skip करें (यदि आप null भेजना चाहते हैं तो check हटा दें)
-//         if (subValue !== null && subValue !== undefined) {
-//           submitFormData.append(`${key}[${subKey}]`, subValue);
-//         }
-//       });
-//     } else if (value !== null && value !== undefined) {
-//       submitFormData.append(key, value);
-//     }
-//   });
-
-//   // (Optional) Debug: FormData entries log करें
-//   // for (let pair of submitFormData.entries()) {
-//   //   console.log(pair[0] + ': ' + pair[1]);
-//   // }
-
-//   // ----- API Call -----
-//   try {
-//     await handleEditAdmissionForm(submitFormData, id);
-//     setShowEditSuccessModal(true);
-//   } catch (error) {
-//     console.error("Update error:", error.response?.data || error.message);
-//     setAlertMessage(
-//       `Failed to update the form: ${error.response?.data?.message || error.message}`
-//     );
-//     setShowAlert(true);
-//   } finally {
-//     setLoading(false);
-//   }
-// };
-
-
-const onSubmit = async (data) => {
-  setLoading(true);
-
-  // ----- Helper functions (पहले की तरह) -----
-  const handleOptionalField = (value) => {
-    if (value === "" || value === undefined || value === null) return null;
-    return value;
-  };
-
-  const handleOptionalNumber = (value) => {
-    if (value === "" || value === undefined || value === null) return null;
-    const num = parseFloat(value);
-    return isNaN(num) ? null : num;
-  };
-
-  const handleOptionalInteger = (value) => {
-    if (value === "" || value === undefined || value === null) return null;
-    const num = parseInt(value, 10);
-    return isNaN(num) ? null : num;
-  };
-
-  const handleDateField = (value) => {
-    if (!value) return null;
+    // ----- API Call -----
     try {
-      const date = new Date(value);
-      if (isNaN(date.getTime())) return null;
-      return date.toISOString().split("T")[0];
-    } catch {
-      return null;
+      await handleEditAdmissionForm(submitFormData, id);
+      setShowEditSuccessModal(true);
+      // Refresh data after successful update
+      await getAdmissionData();
+    } catch (error) {
+      console.error("Update error:", error.response?.data || error.message);
+      setAlertMessage(
+        `Failed to update the form: ${error.response?.data?.message || error.message}`
+      );
+      setShowAlert(true);
+    } finally {
+      setLoading(false);
     }
   };
-
-  // ----- पूरा transformedData (सभी फ़ील्ड्स) -----
-  const transformedData = {
-    student: {
-      first_name: data.student.first_name || "",
-      middle_name: handleOptionalField(data.student.middle_name),
-      last_name: handleOptionalField(data.student.last_name),
-      email: data.student.email || "",
-      father_name: handleOptionalField(data.student.father_name),
-      mother_name: handleOptionalField(data.student.mother_name),
-      date_of_birth: handleDateField(data.student.date_of_birth),
-      gender: handleOptionalField(data.student.gender),
-      religion: handleOptionalField(data.student.religion),
-      category: handleOptionalField(data.student.category),
-      height: handleOptionalNumber(data.student.height),
-      weight: handleOptionalNumber(data.student.weight),
-      blood_group: handleOptionalField(data.student.blood_group),
-      number_of_siblings: handleOptionalInteger(data.student.number_of_siblings) || 0,
-      scholar_number: handleOptionalField(data.student.scholar_number),
-      aadhaar_number: handleOptionalField(data.student.aadhaar_number),
-      FMID_number: handleOptionalField(data.student.FMID_number),
-      apaar_number: handleOptionalField(data.student.apaar_number),
-      PEN_number: handleOptionalField(data.student.PEN_number),
-      BPL_number: handleOptionalField(data.student.BPL_number),
-      SSSMID: handleOptionalField(data.student.SSSMID),
-      class_section: handleOptionalField(data.class_section),
-      is_active: data.student.is_active || "true",
-    },
-    guardian: {
-      first_name: handleOptionalField(data.guardian.first_name),
-      middle_name: handleOptionalField(data.guardian.middle_name),
-      last_name: handleOptionalField(data.guardian.last_name),
-      email: handleOptionalField(data.guardian.email),
-      phone_no: handleOptionalField(data.guardian.phone_no),
-      annual_income: handleOptionalNumber(data.guardian.annual_income) || null,
-      means_of_livelihood: data.guardian.means_of_livelihood ? data.guardian.means_of_livelihood : null,
-      qualification: handleOptionalField(data.guardian.qualification),
-      occupation: handleOptionalField(data.guardian.occupation),
-      designation: handleOptionalField(data.guardian.designation),
-    },
-    address_input: {
-      house_no: handleOptionalInteger(data.address_input.house_no),
-      habitation: handleOptionalField(data.address_input.habitation),
-      ward_no: handleOptionalInteger(data.address_input.ward_no),
-      zone_no: handleOptionalInteger(data.address_input.zone_no),
-      block: handleOptionalField(data.address_input.block),
-      district: handleOptionalField(data.address_input.district),
-      division: handleOptionalField(data.address_input.division),
-      area_code: handleOptionalInteger(data.address_input.area_code),
-      country: handleOptionalField(data.address_input.country),
-      state: handleOptionalField(data.address_input.state),
-      city: handleOptionalField(data.address_input.city),
-      address_line: handleOptionalField(data.address_input.address_line),
-    },
-    banking_detail_input: {
-      account_no: handleOptionalInteger(data.banking_detail_input.account_no),
-      ifsc_code: handleOptionalField(data.banking_detail_input.ifsc_code),
-      holder_name: handleOptionalField(data.banking_detail_input.holder_name),
-      bank_name: handleOptionalField(data.banking_detail_input.bank_name),
-    },
-    guardian_type_input: handleOptionalField(data.guardian_type_input),
-    year_level: handleOptionalField(data.year_level),
-    school_year: handleOptionalField(data.school_year),
-    admission_date: handleDateField(data.admission_date),
-    previous_school_name: handleOptionalField(data.previous_school_name),
-    previous_standard_studied: handleOptionalField(data.previous_standard_studied),
-    tc_letter: handleOptionalField(data.tc_letter),
-    emergency_contact_no: handleOptionalField(data.emergency_contact_no),
-    entire_road_distance_from_home_to_school: handleOptionalField(data.entire_road_distance_from_home_to_school),
-    obtain_marks: handleOptionalNumber(data.obtain_marks),
-    total_marks: handleOptionalNumber(data.total_marks),
-    previous_percentage: handleOptionalNumber(data.previous_percentage),
-    is_rte: data.is_rte || false,
-    rte_number: data.is_rte ? handleOptionalField(data.rte_number) : null,
-    enrollment_no: handleOptionalField(data.enrollment_no),
-  };
-
-  // ----- Required fields paths (dot notation) -----
-  const requiredFieldPaths = [
-    'student.first_name',
-    'student.email',
-    'student.is_active',
-    'school_year',
-    'previous_school_name',
-    'previous_standard_studied',
-    'tc_letter',
-    'emergency_contact_no',
-    'entire_road_distance_from_home_to_school',
-    'obtain_marks',
-    'total_marks',
-    'address_input.country',
-    'address_input.state',
-    'address_input.city',
-  ];
-
-  // अगर RTE है तो rte_number भी required है
-  if (data.is_rte) {
-    requiredFieldPaths.push('rte_number');
-  }
-
-  // ----- Helper: nested value extractor -----
-  const getNestedValue = (obj, path) => {
-    return path.split('.').reduce((o, key) => (o && o[key] !== undefined) ? o[key] : undefined, obj);
-  };
-
-  // ----- requiredData बनाएँ (सिर्फ required fields) -----
-  const requiredData = {};
-  requiredFieldPaths.forEach(path => {
-    const value = getNestedValue(transformedData, path);
-    if (value !== undefined) { // include even if null, but skip undefined
-      const keys = path.split('.');
-      let current = requiredData;
-      for (let i = 0; i < keys.length - 1; i++) {
-        const key = keys[i];
-        if (!current[key]) current[key] = {};
-        current = current[key];
-      }
-      current[keys[keys.length - 1]] = value;
-    }
-  });
-
-  // ----- Filter: केवल dirty fields -----
-  const filterByDirty = (obj, dirty) => {
-    if (typeof dirty === 'boolean') {
-      return dirty ? obj : undefined;
-    }
-    if (obj === null || typeof obj !== 'object') return undefined;
-    const result = {};
-    Object.keys(dirty).forEach((key) => {
-      const childObj = obj[key];
-      const childDirty = dirty[key];
-      if (childDirty !== undefined) {
-        const filtered = filterByDirty(childObj, childDirty);
-        if (filtered !== undefined) {
-          result[key] = filtered;
-        }
-      }
-    });
-    return Object.keys(result).length > 0 ? result : undefined;
-  };
-
-  const dirtyTransformed = filterByDirty(transformedData, dirtyFields) || {};
-
-  // ----- Deep merge requiredData और dirtyTransformed (dirty को priority) -----
-  const deepMerge = (target, source) => {
-    const output = { ...target };
-    if (source && typeof source === 'object') {
-      Object.keys(source).forEach(key => {
-        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-          if (!output[key]) output[key] = {};
-          output[key] = deepMerge(output[key], source[key]);
-        } else {
-          output[key] = source[key];
-        }
-      });
-    }
-    return output;
-  };
-
-  const finalData = deepMerge(requiredData, dirtyTransformed);
-
-  // ----- FormData बनाएँ (सिर्फ finalData से) -----
-  const submitFormData = new FormData();
-  Object.entries(finalData).forEach(([key, value]) => {
-    if (typeof value === 'object' && value !== null) {
-      Object.entries(value).forEach(([subKey, subValue]) => {
-        if (subValue !== null && subValue !== undefined) {
-          submitFormData.append(`${key}[${subKey}]`, subValue);
-        }
-      });
-    } else if (value !== null && value !== undefined) {
-      submitFormData.append(key, value);
-    }
-  });
-
-  // (Optional) Debug log 
-  // for (let pair of submitFormData.entries()) {
-  //   console.log(pair[0] + ': ' + pair[1]);
-  // }
-
-  // ----- API Call -----
-  try {
-    await handleEditAdmissionForm(submitFormData, id);
-    setShowEditSuccessModal(true);
-  } catch (error) {
-    console.error("Update error:", error.response?.data || error.message);
-    setAlertMessage(
-      `Failed to update the form: ${error.response?.data?.message || error.message}`
-    );
-    setShowAlert(true);
-  } finally {
-    setLoading(false);
-  }
-};
 
   const filteredCities = city
     .filter((c) => c.name.toLowerCase().includes(citySearchInput.toLowerCase()))
@@ -1371,18 +962,13 @@ const onSubmit = async (data) => {
                 {...register("student.date_of_birth", {
                   validate: {
                     notFuture: (value) => {
-                      // If value is empty, return true (no validation error for empty field)
                       if (!value) return true;
-
                       const selectedDate = new Date(value);
                       const today = new Date();
                       today.setHours(0, 0, 0, 0);
-
-                      // Check if the date is valid
                       if (isNaN(selectedDate.getTime())) {
                         return "Invalid date format";
                       }
-
                       return (
                         selectedDate <= today ||
                         "Date of birth cannot be in the future"
@@ -1604,7 +1190,6 @@ const onSubmit = async (data) => {
 
           {/* New Fields Section - Additional Student Fields */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-            {/* Scholar No. */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
@@ -1630,7 +1215,6 @@ const onSubmit = async (data) => {
               )}
             </div>
 
-            {/* Aadhaar No. */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
@@ -1663,7 +1247,6 @@ const onSubmit = async (data) => {
               )}
             </div>
 
-            {/* FMID No. */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
@@ -1691,7 +1274,6 @@ const onSubmit = async (data) => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-            {/* Apaar ID No. */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
@@ -1717,7 +1299,6 @@ const onSubmit = async (data) => {
               )}
             </div>
 
-            {/* PEN No. */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
@@ -1743,7 +1324,6 @@ const onSubmit = async (data) => {
               )}
             </div>
 
-            {/* BPL No. */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
@@ -1771,7 +1351,6 @@ const onSubmit = async (data) => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-            {/* Enrollment No. */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
@@ -1797,7 +1376,6 @@ const onSubmit = async (data) => {
               )}
             </div>
 
-            {/* Class Section */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
@@ -1817,7 +1395,6 @@ const onSubmit = async (data) => {
               </select>
             </div>
 
-            {/* SSSMID */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
@@ -1876,7 +1453,6 @@ const onSubmit = async (data) => {
               )}
             </div>
 
-            {/* RTE number field - Render only when isRTE is true */}
             {isRTE && (
               <div className="form-control">
                 <label className="label">
@@ -2502,7 +2078,6 @@ const onSubmit = async (data) => {
               )}
             </div>
 
-            {/* Previous Percentage Field */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
@@ -2542,7 +2117,7 @@ const onSubmit = async (data) => {
           </div>
         </div>
 
-        {/* Address Information Section */}
+        {/* Address Information Section - OPTIONAL FIELDS */}
         <div className="bg-base-200 p-6 rounded-box mb-6">
           <h2 className="text-2xl font-bold mb-4">Residential Address</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -2702,7 +2277,7 @@ const onSubmit = async (data) => {
               <label className="label">
                 <span className="label-text flex items-center gap-2">
                   <i className="fa-solid fa-city text-sm"></i>
-                  City <span className="text-error">*</span>
+                  City
                 </span>
               </label>
 
@@ -2747,7 +2322,6 @@ const onSubmit = async (data) => {
                                   }
                                 );
                                 trigger("address_input.city");
-
                                 setSelectedCityName(city.name);
                                 setCitySearchInput("");
                                 setShowCityDropdown(false);
@@ -2805,7 +2379,7 @@ const onSubmit = async (data) => {
               <label className="label">
                 <span className="label-text flex items-center gap-2">
                   <i className="fa-solid fa-flag text-sm"></i>
-                  State <span className="text-error">*</span>
+                  State
                 </span>
               </label>
 
@@ -2847,9 +2421,7 @@ const onSubmit = async (data) => {
                                 shouldValidate: true,
                               }
                             );
-
                             trigger("address_input.state");
-
                             setSelectedStateName(state.name);
                             setStateSearchInput("");
                             setShowStateDropdown(false);
@@ -2878,7 +2450,7 @@ const onSubmit = async (data) => {
               <label className="label">
                 <span className="label-text flex items-center gap-2">
                   <i className="fa-solid fa-globe text-sm"></i>
-                  Country <span className="text-error">*</span>
+                  Country
                 </span>
               </label>
 
@@ -2921,7 +2493,6 @@ const onSubmit = async (data) => {
                               }
                             );
                             trigger("address_input.state");
-
                             setSelectedCountryName(country.name);
                             setCountrySearchInput("");
                             setShowCountryDropdown(false);
@@ -3004,7 +2575,6 @@ const onSubmit = async (data) => {
           <h2 className="text-2xl font-bold mb-4">Bank Account Details</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Account Holder Name */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
@@ -3051,7 +2621,6 @@ const onSubmit = async (data) => {
               )}
             </div>
 
-            {/* Bank Name */}
             <div className="form-control relative" ref={bankInputRef}>
               <label className="label">
                 <span className="label-text flex items-center gap-2">
@@ -3063,7 +2632,6 @@ const onSubmit = async (data) => {
                 </span>
               </label>
 
-              {/* Hidden input for the ID */}
               <input
                 type="hidden"
                 {...register("banking_detail_input.bank_name", {
@@ -3080,7 +2648,6 @@ const onSubmit = async (data) => {
                 })}
               />
 
-              {/* Visible input for the name */}
               <input
                 type="text"
                 value={bankQuery}
@@ -3103,14 +2670,12 @@ const onSubmit = async (data) => {
                 autoComplete="off"
               />
 
-              {/* Error Message */}
               {errors.banking_detail_input?.bank_name && (
                 <span className="text-error text-sm mt-1">
                   {errors.banking_detail_input.bank_name.message}
                 </span>
               )}
 
-              {/* Dropdown List */}
               {showDropdown && (
                 <ul className="absolute z-20 w-full bg-white border border-gray-300 rounded mt-1 max-h-60 overflow-y-auto dark:bg-[#242627] dark:border-gray-600">
                   {filteredBanks.map((b) => (
@@ -3151,7 +2716,6 @@ const onSubmit = async (data) => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-            {/* Account Number */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
@@ -3208,7 +2772,6 @@ const onSubmit = async (data) => {
               )}
             </div>
 
-            {/* IFSC Code */}
             <div className="form-control">
               <label className="label">
                 <span className="label-text flex items-center gap-2">
@@ -3232,7 +2795,7 @@ const onSubmit = async (data) => {
                       return true;
                     },
                     validFormat: (value) => {
-                      if (!value) return true; // Allow empty if no bank fields are filled
+                      if (!value) return true;
                       const trimmed = value.trim().toUpperCase();
                       if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(trimmed)) {
                         return "Invalid IFSC format. Must be like SBIN0001234";

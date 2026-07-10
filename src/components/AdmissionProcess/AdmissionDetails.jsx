@@ -13,45 +13,102 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 
-const LIMIT = 10;
-
 export const AdmissionDetails = () => {
   const { axiosInstance } = useContext(AuthContext);
-  const [details, setDetails] = useState([]);
+  const [details, setDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedClass, setSelectedClass] = useState("");
   const [yearLevels, setYearLevels] = useState([]);
   const [searchInput, setSearchInput] = useState("");
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
+
   const [error, setError] = useState(false);
   const [showDownloadOptions, setShowDownloadOptions] = useState(false);
   const dropdownRef = useRef(null);
+  const [studentData, setStudentData] = useState([]);
 
-  const [offset, setOffset] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
-
-  // ---------- Deactivate / Reactivate States ----------
+  // Delete States
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // Result Modal
   const [resultModal, setResultModal] = useState(null);
 
+  // Inactive Students States
   const [showInactiveModal, setShowInactiveModal] = useState(false);
   const [inactiveStudents, setInactiveStudents] = useState([]);
   const [inactiveLoading, setInactiveLoading] = useState(false);
   const [reactivatingId, setReactivatingId] = useState(null);
 
-  // ---------- Helper Functions ----------
-  const formatDate = (dateStr) => {
-    if (!dateStr || dateStr === "N/A" || dateStr === "null") return "";
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return "";
-    return d.toLocaleDateString("en-GB").replaceAll("/", "-");
+  // --------------------------------------------------------------
+  // Helper to normalize API responses (array or object)
+  // --------------------------------------------------------------
+  const normalizeStudents = (data) => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    if (Array.isArray(data?.data)) return data.data;
+    if (typeof data === "object") {
+      if ("student_id" in data || "student_name" in data) return [data];
+      const vals = Object.values(data).filter(
+        (v) =>
+          v &&
+          typeof v === "object" &&
+          ("student_id" in v || "student_name" in v)
+      );
+      if (vals.length) return vals;
+    }
+    return [];
   };
 
-  // ---------- Click outside for dropdown ----------
+  // --------------------------------------------------------------
+  // Fetch all student data (for download) – robust
+  // --------------------------------------------------------------
+  const fetchAllStudentData = async () => {
+    try {
+      const res = await axiosInstance.get("s/students/student_details/");
+      return normalizeStudents(res.data);
+    } catch (err) {
+      console.error("Error fetching all students for download:", err);
+      alert("Failed to load complete data. Please try again.");
+      return [];
+    }
+  };
+
+  // --------------------------------------------------------------
+  // Fetch admission details (main list)
+  // --------------------------------------------------------------
+  const getAdmissionDetails = async () => {
+    try {
+      const data = normalizeStudents(await fetchAdmissionDetails());
+      setDetails(data);
+      setLoading(false);
+      // Also fetch all students for download
+      const all = await fetchAllStudentData();
+      setStudentData(all);
+    } catch (error) {
+      console.log("failed to fetch admission details", error);
+      setError(true);
+      setLoading(false);
+    }
+  };
+
+  const getYearLevels = async () => {
+    try {
+      const data = await fetchYearLevels();
+      setYearLevels(data);
+    } catch (error) {
+      console.log("failed to fetch year levels", error);
+    }
+  };
+
+  useEffect(() => {
+    getAdmissionDetails();
+    getYearLevels();
+  }, []);
+
+  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -59,102 +116,111 @@ export const AdmissionDetails = () => {
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
-  // ---------- Fetch admission details (paginated) ----------
-  const getAdmissionDetails = async (offsetVal = offset) => {
+  // --------------------------------------------------------------
+  // DELETE / DEACTIVATE
+  // --------------------------------------------------------------
+  const handleDeleteClick = (detail) => {
+    setStudentToDelete(detail);
+    setShowDeleteModal(true);
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setStudentToDelete(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!studentToDelete) return;
+    setDeleteLoading(true);
     try {
-      setLoading(true);
-      const params = {
-        limit: LIMIT,
-        offset: offsetVal,
-        // Add filters if API supports them:
-        // class: selectedClass,
-        // from_date: fromDate,
-        // to_date: toDate,
-        // search: searchInput,
-      };
-      const res = await axiosInstance.get("s/students/student_details/", { params });
-      setDetails(res.data.results || []);
-      setTotalCount(res.data.count || 0);
-      setError(false);
-    } catch (err) {
-      console.log("Failed to fetch admission details", err);
-      setError(true);
+      const studentId =
+        studentToDelete.student_input?.id ??
+        studentToDelete.student_id ??
+        studentToDelete.id;
+
+      await deactivateStudents([studentId]);
+      await getAdmissionDetails(); // refresh both details & studentData
+
+      setShowDeleteModal(false);
+      setStudentToDelete(null);
+
+      setResultModal({
+        type: "success",
+        message: "Student has been deactivated successfully.",
+      });
+    } catch (error) {
+      setShowDeleteModal(false);
+      setStudentToDelete(null);
+      setResultModal({
+        type: "error",
+        message: "Failed to deactivate student. Please try again.",
+      });
     } finally {
-      setLoading(false);
+      setDeleteLoading(false);
     }
   };
 
-  // ---------- Fetch all pages for download ----------
-  const fetchAllStudentData = async () => {
-    let allData = [];
-    let currentOffset = 0;
-    let hasMore = true;
-    while (hasMore) {
-      try {
-        const res = await axiosInstance.get("s/students/student_details/", {
-          params: { limit: 100, offset: currentOffset },
-        });
-        const results = res.data.results || [];
-        allData = [...allData, ...results];
-        currentOffset += results.length;
-        if (!res.data.next) hasMore = false;
-      } catch (err) {
-        console.error("Error fetching page for download", err);
-        break;
-      }
-    }
-    return allData;
-  };
-
-  // ---------- Fetch Year Levels ----------
-  const getYearLevels = async () => {
+  // --------------------------------------------------------------
+  // INACTIVE & REACTIVATE
+  // --------------------------------------------------------------
+  const getInactiveStudents = async () => {
+    setInactiveLoading(true);
     try {
-      const data = await fetchYearLevels();
-      setYearLevels(data);
+      const data = await fetchInactiveStudents();
+      setInactiveStudents(data);
     } catch (err) {
-      console.error("Error fetching year levels:", err);
+      console.error("Failed to fetch inactive students:", err);
+      setInactiveStudents([]);
+    } finally {
+      setInactiveLoading(false);
     }
   };
 
-  // ---------- Initial load ----------
-  useEffect(() => {
-    getYearLevels();
-    getAdmissionDetails(0);
-  }, []);
-
-  useEffect(() => {
-    getAdmissionDetails(offset);
-  }, [offset]);
-
-  // ---------- Reset filters ----------
-  const resetFilters = () => {
-    setSelectedClass("");
-    setFromDate("");
-    setToDate("");
-    setSearchInput("");
-    setOffset(0);
+  const handleInactiveClick = () => {
+    setShowInactiveModal(true);
+    getInactiveStudents();
   };
 
-  // ---------- Normalize for downloads ----------
-  const normalizeStudents = (data) => {
-    if (!data) return [];
-    if (Array.isArray(data)) return data;
-    if (Array.isArray(data?.results)) return data.results;
-    if (Array.isArray(data?.data)) return data.data;
-    return [];
-  };
+  const handleReactivate = async (studentId) => {
+    setReactivatingId(studentId);
+    try {
+      await reactivateStudents([studentId]);
 
-  // ---------- Download Handlers ----------
-  const handleDownloadExcel = async () => {
-    const fullData = await fetchAllStudentData();
-    const data = normalizeStudents(fullData);
-    if (!data.length) {
-      alert("No data to export.");
-      return;
+      // Remove from local list
+      setInactiveStudents((prev) =>
+        prev.filter((s) => (s.id ?? s.student_id) !== studentId)
+      );
+
+      // Refresh main list and studentData
+      await getAdmissionDetails();
+
+      setResultModal({
+        type: "success",
+        message: "Student has been reactivated successfully.",
+      });
+    } catch (err) {
+      console.error("Reactivation failed:", err);
+      setResultModal({
+        type: "error",
+        message: "Failed to reactivate student. Please try again.",
+      });
+    } finally {
+      setReactivatingId(null);
     }
+  };
+
+  // --------------------------------------------------------------
+  // DOWNLOAD FUNCTIONS (use studentData, already all records)
+  // --------------------------------------------------------------
+  const handleDownloadExcel = (input = []) => {
+    const data = normalizeStudents(input);
+    if (!data.length) return;
+
     const formattedData = data.map((s) => ({
       ID: s.student_id ?? s.id ?? "",
       "Scholar No": s["scholar number"] ?? "",
@@ -177,7 +243,7 @@ export const AdmissionDetails = () => {
       Guardian: s.guardian_name ?? "",
       "Guardian Phone": s["guardian's contact no."] ?? "",
       Address: s.full_address ?? "",
-      Aadhaar: s["adhaar number"] ?? s["aadhaar number"] ?? "",
+      Aadhaar: s["adhaar number"] ?? s["aadhaar_number"] ?? "",
       "Bank Account": s["bank details"]?.account_no ?? "N/A",
       IFSC: s["bank details"]?.ifsc_code ?? "N/A",
       "Annual Income": s["annual income"] ?? s.annual_income ?? "",
@@ -190,15 +256,16 @@ export const AdmissionDetails = () => {
     XLSX.writeFile(workbook, "Student_Details_Report.xlsx");
   };
 
-  const handleDownloadStudentDataPDF = async () => {
-    const fullData = await fetchAllStudentData();
-    const data = normalizeStudents(fullData);
-    if (!data.length) {
-      alert("No data to export.");
-      return;
-    }
+  const handleDownloadStudentDataPDF = (input = []) => {
+    const data = normalizeStudents(input);
+    if (!data.length) return;
 
-    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a3" });
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a3",
+    });
+
     const margin = 10;
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -208,17 +275,33 @@ export const AdmissionDetails = () => {
     doc.text("Student Details Report", margin, 12);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth - margin, 12, { align: "right" });
+    doc.text(
+      `Generated: ${new Date().toLocaleString()}`,
+      pageWidth - margin,
+      12,
+      { align: "right" }
+    );
 
     const fmtDate = (d) => {
-      if (!d || d === "N/A") return "";
+      if (!d) return "";
       const date = new Date(d);
-      return isNaN(date) ? String(d) : date.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+      return isNaN(date)
+        ? String(d)
+        : date.toLocaleDateString(undefined, {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          });
     };
     const fmtNumberIN = (n) => {
-      if (n === null || n === undefined || n === "" || n === "N/A") return "N/A";
+      if (n === null || n === undefined || n === "" || n === "N/A")
+        return "N/A";
       const num = Number(n);
-      return Number.isNaN(num) ? String(n) : new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(num);
+      return Number.isNaN(num)
+        ? String(n)
+        : new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(
+            num
+          );
     };
     const safe = (v) => (v === null || v === undefined ? "" : String(v));
 
@@ -226,11 +309,14 @@ export const AdmissionDetails = () => {
       const id = safe(s.student_id ?? s.id);
       const scholar = safe(s["scholar number"] ?? "");
       const enroll = safe(s.enrollment_no ?? "");
-      const schEnroll = `S:${scholar}${scholar && enroll ? "  " : ""}E:${enroll}`.trim();
+      const schEnroll =
+        `S:${scholar}${scholar && enroll ? "  " : ""}E:${enroll}`.trim();
       const name = safe(s.student_name);
       const className = safe(s.class);
       const age = s.age ?? "";
-      const gender = s.gender ? s.gender[0].toUpperCase() + s.gender.slice(1) : "";
+      const gender = s.gender
+        ? s.gender[0].toUpperCase() + s.gender.slice(1)
+        : "";
       const dob = fmtDate(s.date_of_birth);
       const category = safe(s.category);
       const religion = safe(s.religion);
@@ -248,16 +334,19 @@ export const AdmissionDetails = () => {
       const guardianPhone = safe(s["guardian's contact no."] ?? "");
       const guardian = `G:${guardianName}\nC:${guardianPhone}`;
       const address = safe(s.full_address);
-      const aadhaar = safe(s["adhaar number"] ?? s["aadhaar number"] ?? "");
+      const aadhaar = safe(s["adhaar number"] ?? s["aadhaar_number"] ?? "");
       const bankAcc = safe(s["bank details"]?.account_no ?? "N/A");
       const ifsc = safe(s["bank details"]?.ifsc_code ?? "N/A");
       const bank = `A/C:${bankAcc}\nIFSC:${ifsc}`;
-      const annualIncome = fmtNumberIN(s["annual income"] ?? s.annual_income);
+      const annualIncome = fmtNumberIN(
+        s["annual income"] ?? s.annual_income
+      );
       const year = safe(s["school year"] ?? "");
 
       return [
-        id, schEnroll, name, className, age, gender, dob, catRel, siblings, active,
-        rte, phone, email, parents, guardian, address, aadhaar, bank, annualIncome, year,
+        id, schEnroll, name, className, age, gender, dob, catRel, siblings,
+        active, rte, phone, email, parents, guardian, address, aadhaar, bank,
+        annualIncome, year,
       ];
     });
 
@@ -266,14 +355,26 @@ export const AdmissionDetails = () => {
       theme: "grid",
       showHead: "everyPage",
       rowPageBreak: "avoid",
-      head: [[
-        "ID", "Sch/En", "Name", "Class", "Age", "Gender", "DOB", "Cat/Rel", "Siblings", "Active",
-        "RTE", "Phone", "Email", "Parents", "Guardian", "Address", "Aadhaar", "Bank", "Income", "Year",
-      ]],
+      head: [
+        [
+          "ID", "Sch/En", "Name", "Class", "Age", "Gender", "DOB", "Cat/Rel",
+          "Siblings", "Active", "RTE", "Phone", "Email", "Parents", "Guardian",
+          "Address", "Aadhaar", "Bank", "Income", "Year",
+        ],
+      ],
       body,
       margin: { top: 15, left: margin, right: margin },
-      styles: { fontSize: 6.3, cellPadding: 1.0, overflow: "linebreak", valign: "middle" },
-      headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: "bold" },
+      styles: {
+        fontSize: 6.3,
+        cellPadding: 1.0,
+        overflow: "linebreak",
+        valign: "middle",
+      },
+      headStyles: {
+        fillColor: [30, 64, 175],
+        textColor: 255,
+        fontStyle: "bold",
+      },
       alternateRowStyles: { fillColor: [248, 250, 252] },
       columnStyles: {
         0: { cellWidth: 10, halign: "center" },
@@ -301,102 +402,32 @@ export const AdmissionDetails = () => {
         const pageCount = doc.internal.getNumberOfPages();
         doc.setFontSize(8);
         doc.setTextColor(100);
-        doc.text(`Page ${data.pageNumber} of ${pageCount}`, pageWidth - margin, pageHeight - 6, { align: "right" });
+        doc.text(
+          `Page ${data.pageNumber} of ${pageCount}`,
+          pageWidth - margin,
+          pageHeight - 6,
+          { align: "right" }
+        );
       },
     });
 
     doc.save("Student_Details_Report.pdf");
   };
 
-  // ---------- DELETE / DEACTIVATE ----------
-  const handleDeleteClick = (detail) => {
-    setStudentToDelete(detail);
-    setShowDeleteModal(true);
-  };
-
-  const handleCancelDelete = () => {
-    setShowDeleteModal(false);
-    setStudentToDelete(null);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!studentToDelete) return;
-    setDeleteLoading(true);
-    try {
-      const studentId = studentToDelete.student_id ?? studentToDelete.id;
-      await deactivateStudents([studentId]);
-      await getAdmissionDetails(offset); // refresh current page
-      setShowDeleteModal(false);
-      setStudentToDelete(null);
-      setResultModal({
-        type: "success",
-        message: "Student has been deactivated successfully.",
-      });
-    } catch (error) {
-      setShowDeleteModal(false);
-      setStudentToDelete(null);
-      setResultModal({
-        type: "error",
-        message: "Failed to deactivate student. Please try again.",
-      });
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
-
-  // ---------- INACTIVE & REACTIVATE ----------
-  const getInactiveStudents = async () => {
-    setInactiveLoading(true);
-    try {
-      const data = await fetchInactiveStudents();
-      setInactiveStudents(data);
-    } catch (err) {
-      console.error("Failed to fetch inactive students:", err);
-      setInactiveStudents([]);
-    } finally {
-      setInactiveLoading(false);
-    }
-  };
-
-  const handleInactiveClick = () => {
-    setShowInactiveModal(true);
-    getInactiveStudents();
-  };
-
-  const handleReactivate = async (studentId) => {
-    setReactivatingId(studentId);
-    try {
-      await reactivateStudents([studentId]);
-      // Remove from local list
-      setInactiveStudents((prev) =>
-        prev.filter((s) => (s.id ?? s.student_id) !== studentId)
-      );
-      // Refresh main list
-      await getAdmissionDetails(offset);
-      setResultModal({
-        type: "success",
-        message: "Student has been reactivated successfully.",
-      });
-    } catch (err) {
-      console.error("Reactivation failed:", err);
-      setResultModal({
-        type: "error",
-        message: "Failed to reactivate student. Please try again.",
-      });
-    } finally {
-      setReactivatingId(null);
-    }
-  };
-
-  // ---------- Loading / Error States ----------
+  // --------------------------------------------------------------
+  // ERROR / LOADING / NO DATA
+  // --------------------------------------------------------------
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center p-6">
         <i className="fa-solid fa-triangle-exclamation text-5xl text-red-400 mb-4"></i>
-        <p className="text-lg text-red-400 font-medium">Failed to load data, Try Again</p>
+        <p className="text-lg text-red-400 font-medium">
+          Failed to load data, Try Again
+        </p>
       </div>
     );
   }
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
@@ -409,48 +440,46 @@ export const AdmissionDetails = () => {
       </div>
     );
   }
-  if (!details.length && !loading) {
+
+  if (!details) {
     return <div className="p-4 text-center">No admission records found</div>;
   }
 
-  // ---------- Client‑side Filtering (flat fields) ----------
+  // --------------------------------------------------------------
+  // FILTER & SORT
+  // --------------------------------------------------------------
   const filterData = details.filter((detail) => {
-    const matchesClass = (detail.class ?? "")
+    const matchesClass = (detail.year_level ?? "")
       .toLowerCase()
       .includes(selectedClass.toLowerCase());
-
-    let matchesDateRange = true;
-    const admissionDate = detail.admission_date && detail.admission_date !== "N/A"
-      ? new Date(detail.admission_date)
-      : null;
-    if (fromDate || toDate) {
-      if (!admissionDate) {
-        matchesDateRange = false;
-      } else {
-        if (fromDate && new Date(fromDate) > admissionDate) matchesDateRange = false;
-        if (toDate && new Date(toDate) < admissionDate) matchesDateRange = false;
-      }
-    }
-
-    return matchesClass && matchesDateRange;
+    const matchesDate = selectedDate
+      ? detail.admission_date === selectedDate
+      : true;
+    return matchesClass && matchesDate;
   });
 
-  const filterBySearch = filterData.filter((detail) => {
+  const filterBysearch = filterData.filter((detail) => {
     const search = searchInput.toLowerCase();
-    const studentName = (detail.student_name ?? "").toLowerCase();
+    const student = detail.student_input || {};
+    const studentName =
+      `${student.first_name ?? ""} ${student.last_name ?? ""}`.toLowerCase();
     return studentName.startsWith(search);
   });
 
-  const sortedData = [...filterBySearch].sort((a, b) => {
-    const nameA = (a.student_name ?? "").toLowerCase();
-    const nameB = (b.student_name ?? "").toLowerCase();
+  const sortedData = [...filterBysearch].sort((a, b) => {
+    const nameA =
+      `${a.student_input?.first_name ?? ""} ${a.student_input?.last_name ?? ""}`.toLowerCase();
+    const nameB =
+      `${b.student_input?.first_name ?? ""} ${b.student_input?.last_name ?? ""}`.toLowerCase();
     return nameA.localeCompare(nameB);
   });
 
-  // ---------- Main Render ----------
+  // --------------------------------------------------------------
+  // MAIN RENDER
+  // --------------------------------------------------------------
   return (
     <div className="p-6 bg-gray-100 dark:bg-gray-900 min-h-screen mb-24 md:mb-10">
-      {/* ---------- DELETE CONFIRM MODAL ---------- */}
+      {/* DELETE CONFIRM MODAL */}
       {showDeleteModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-sm shadow-md">
@@ -480,7 +509,7 @@ export const AdmissionDetails = () => {
         </div>
       )}
 
-      {/* ---------- RESULT MODAL ---------- */}
+      {/* RESULT MODAL */}
       {resultModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-sm shadow-md">
@@ -497,7 +526,9 @@ export const AdmissionDetails = () => {
             </div>
             <h2
               className={`text-lg font-semibold text-center mb-2 ${
-                resultModal.type === "success" ? "text-green-700" : "text-red-700"
+                resultModal.type === "success"
+                  ? "text-green-700"
+                  : "text-red-700"
               }`}
             >
               {resultModal.type === "success" ? "Success!" : "Failed!"}
@@ -521,10 +552,11 @@ export const AdmissionDetails = () => {
         </div>
       )}
 
-      {/* ---------- INACTIVE STUDENTS MODAL ---------- */}
+      {/* INACTIVE STUDENTS MODAL */}
       {showInactiveModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-lg max-h-[80vh] flex flex-col">
+            {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
                 <i className="fa-solid fa-user-slash text-red-500"></i>
@@ -537,6 +569,8 @@ export const AdmissionDetails = () => {
                 <i className="fa-solid fa-xmark text-gray-500 dark:text-gray-300"></i>
               </button>
             </div>
+
+            {/* Body */}
             <div className="flex-1 overflow-y-auto p-4">
               {inactiveLoading ? (
                 <div className="flex flex-col items-center justify-center py-10">
@@ -557,7 +591,7 @@ export const AdmissionDetails = () => {
               ) : (
                 <div className="space-y-3">
                   {inactiveStudents.map((student) => {
-                    const id = student.id ?? student.student_id;
+                    const id = student.id;
                     const name = student.name || "Unknown";
                     return (
                       <div
@@ -602,6 +636,8 @@ export const AdmissionDetails = () => {
                 </div>
               )}
             </div>
+
+            {/* Footer */}
             <div className="p-4 border-t border-gray-200 dark:border-gray-700">
               <p className="text-xs text-gray-400 text-center">
                 {inactiveStudents.length} inactive student(s)
@@ -611,7 +647,7 @@ export const AdmissionDetails = () => {
         </div>
       )}
 
-      {/* ---------- MAIN CONTAINER ---------- */}
+      {/* Main Container */}
       <div className="max-w-7xl mx-auto bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
         <div className="mb-6">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 text-center mb-4 border-gray-200 dark:border-gray-700">
@@ -619,13 +655,14 @@ export const AdmissionDetails = () => {
           </h1>
         </div>
 
-        {/* Filters and Download */}
         <div className="w-full px-5">
           <div className="flex flex-wrap justify-between items-end gap-4 mb-6 w-full border-b border-gray-300 dark:border-gray-700 pb-4">
+            {/* Left Side: Filters */}
             <div className="flex flex-wrap items-end gap-4 w-full sm:w-auto">
-              {/* Class Filter */}
               <div className="flex flex-col w-full sm:w-auto">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Search By Class:</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Search By Class:
+                </label>
                 <select
                   className="select select-bordered w-full focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
                   value={selectedClass}
@@ -640,49 +677,49 @@ export const AdmissionDetails = () => {
                 </select>
               </div>
 
-              {/* From Date */}
               <div className="flex flex-col w-full sm:w-auto">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">From Date</label>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Search By Date:
+                </label>
                 <input
                   type="date"
                   className="input input-bordered w-full focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
                 />
               </div>
 
-              {/* To Date */}
-              <div className="flex flex-col w-full sm:w-auto">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">To Date</label>
-                <input
-                  type="date"
-                  className="input input-bordered w-full focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                />
-              </div>
-
-              {/* Reset */}
               <div className="mt-1 w-full sm:w-auto">
-                <button onClick={resetFilters} className="btn bgTheme text-white">
+                <button
+                  onClick={() => {
+                    setSelectedClass("");
+                    setSelectedDate("");
+                    setSearchInput("");
+                  }}
+                  className="btn bgTheme text-white"
+                >
                   Reset Filters
                 </button>
               </div>
 
-              {/* Download Dropdown */}
-              <div className="mt-1 w-full sm:w-auto relative group" ref={dropdownRef}>
+              <div
+                className="mt-1 w-full sm:w-auto relative group"
+                ref={dropdownRef}
+              >
                 <button
                   className="btn bgTheme text-white flex items-center"
                   onClick={() => setShowDownloadOptions((prev) => !prev)}
                 >
-                  <i className="fa-solid fa-file-arrow-down mr-2"></i> Download All Student Info
+                  <i className="fa-solid fa-file-arrow-down mr-2"></i> Download
+                  All Student Info
                   <i className="fa-solid fa-caret-down ml-2"></i>
                 </button>
+
                 {showDownloadOptions && (
                   <div className="absolute z-10 mt-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg">
                     <button
                       onClick={() => {
-                        handleDownloadStudentDataPDF();
+                        handleDownloadStudentDataPDF(studentData);
                         setShowDownloadOptions(false);
                       }}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600"
@@ -691,7 +728,7 @@ export const AdmissionDetails = () => {
                     </button>
                     <button
                       onClick={() => {
-                        handleDownloadExcel();
+                        handleDownloadExcel(studentData);
                         setShowDownloadOptions(false);
                       }}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600"
@@ -703,7 +740,7 @@ export const AdmissionDetails = () => {
               </div>
             </div>
 
-            {/* Search and Inactive Icon */}
+            {/* Right Side: Search + Inactive Icon */}
             <div className="flex items-end gap-2 w-full sm:w-auto justify-end">
               <div className="flex flex-col w-full sm:w-auto">
                 <input
@@ -714,6 +751,7 @@ export const AdmissionDetails = () => {
                   onChange={(e) => setSearchInput(e.target.value.trimStart())}
                 />
               </div>
+
               {/* Inactive Students Icon */}
               <button
                 onClick={handleInactiveClick}
@@ -727,8 +765,10 @@ export const AdmissionDetails = () => {
         </div>
 
         {/* Table */}
-        {sortedData.length === 0 ? (
-          <p className="text-gray-600 dark:text-gray-400">No admission records found.</p>
+        {filterData.length === 0 ? (
+          <p className="text-gray-600 dark:text-gray-400">
+            No admission records found.
+          </p>
         ) : (
           <div className="overflow-x-auto no-scrollbar max-h-[70vh] rounded-lg">
             <div className="inline-block min-w-full align-middle rounded-lg">
@@ -736,111 +776,133 @@ export const AdmissionDetails = () => {
                 <table className="min-w-full divide-gray-300 dark:divide-gray-700">
                   <thead className="bgTheme text-white z-2 sticky top-0">
                     <tr>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Student Name</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Father Name</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Mother Name</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Date of Birth</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Gender</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Class</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">RTE</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">Admission Date</th>
-                      <th className="px-8 py-3 text-left text-sm font-semibold text-nowrap">Status</th>
-                      <th className="px-10 py-3 text-left text-sm font-semibold text-nowrap">Actions</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">
+                        Student Name
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">
+                        Father Name
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">
+                        Mother Name
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">
+                        Date of Birth
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">
+                        Gender
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">
+                        Class
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">
+                        RTE
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-nowrap">
+                        Admission Date
+                      </th>
+                      <th className="px-8 py-3 text-left text-sm font-semibold text-nowrap">
+                        Status
+                      </th>
+                      <th className="px-10 py-3 text-left text-sm font-semibold text-nowrap">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                    {sortedData.map((detail) => (
-                      <tr key={detail.student_id || detail.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
-                          {detail.student_name || ""}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
-                          {detail.father_name || ""}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
-                          {detail.mother_name || ""}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-300">
-                          {detail.date_of_birth !== "N/A" ? detail.date_of_birth : ""}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-300">
-                          {detail.gender || ""}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-300">
-                          {detail.class || ""}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-300">
-                          {detail.is_rte === true ? "Yes" : detail.is_rte === false ? "No" : ""}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-300">
-                          {formatDate(detail.admission_date)}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-300">
-                          <span
-                            className={`inline-flex items-center px-4 py-1 rounded-full text-xs font-medium ${
-                              detail.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {detail.is_active ? "Active" : "InActive"}
-                          </span>
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm">
-                          <div className="flex space-x-2">
-                            <Link
-                              to={allRouterLink.editAddmisionDetails.replace(":id", detail.student_id || detail.id)}
-                              className="inline-flex items-center px-3 py-1 border border-yellow-300 rounded-md shadow-sm text-sm font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100"
+                    {sortedData.length > 0 ? (
+                      sortedData.map((detail) => (
+                        <tr
+                          key={detail.id}
+                          className="hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                        >
+                          <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                            {detail.student_input?.first_name ?? ""}{" "}
+                            {detail.student_input?.last_name ?? ""}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                            {detail.student_input?.father_name ?? ""}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                            {detail.student_input?.mother_name ?? ""}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-300">
+                            {detail.student_input?.date_of_birth ?? ""}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-300">
+                            {detail.student_input?.gender ?? ""}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-300">
+                            {detail.year_level ?? ""}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-300">
+                            {detail.is_rte ? "Yes" : "No"}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-300">
+                            {detail.admission_date
+                              ? new Date(detail.admission_date)
+                                  .toLocaleDateString("en-GB")
+                                  .replaceAll("/", "-")
+                              : ""}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-300">
+                            <span
+                              className={`inline-flex items-center px-4 py-1 rounded-full text-xs font-medium ${
+                                detail.student_input?.is_active
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
                             >
-                              Edit
-                            </Link>
-                            <Link
-                              to={allRouterLink.addmissionDetailsById.replace(":id", detail.student_id || detail.id)}
-                              className="inline-flex items-center px-3 py-1 border border-[#5E35B1] rounded-md shadow-sm text-sm font-medium textTheme bg-blue-50 hover:bg-blue-100"
-                            >
-                              View
-                            </Link>
-                            {/* Deactivate Button */}
-                            <button
-                              onClick={() => handleDeleteClick(detail)}
-                              className="inline-flex items-center px-3 py-1 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 transition"
-                            >
-                              Deactivate
-                            </button>
-                          </div>
+                              {detail.student_input?.is_active
+                                ? "Active"
+                                : "InActive"}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-sm">
+                            <div className="flex space-x-2">
+                              <Link
+                                to={allRouterLink.editAddmisionDetails.replace(
+                                  ":id",
+                                  detail.id
+                                )}
+                                className="inline-flex items-center px-3 py-1 border border-yellow-300 rounded-md shadow-sm text-sm font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100"
+                              >
+                                Edit
+                              </Link>
+                              <Link
+                                to={allRouterLink.addmissionDetailsById.replace(
+                                  ":id",
+                                  detail.id
+                                )}
+                                className="inline-flex items-center px-3 py-1 border border-[#5E35B1] rounded-md shadow-sm text-sm font-medium textTheme bg-blue-50 hover:bg-blue-100"
+                              >
+                                View
+                              </Link>
+                              <button
+                                onClick={() => handleDeleteClick(detail)}
+                                className="inline-flex items-center px-3 py-1 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 transition"
+                              >
+                                Deactivate
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td
+                          colSpan="10"
+                          className="text-center py-6 text-gray-500 dark:text-gray-400"
+                        >
+                          No data found.
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
             </div>
           </div>
         )}
-
-        {/* Pagination */}
-        <div className="flex justify-between items-center mt-6">
-          <p className="text-sm text-gray-600 dark:text-gray-300">
-            Showing {sortedData.length} of {totalCount} Students
-          </p>
-          <div className="join">
-            <button
-              className="join-item btn"
-              disabled={offset === 0}
-              onClick={() => setOffset((prev) => Math.max(prev - LIMIT, 0))}
-            >
-              Previous
-            </button>
-            <button className="join-item btn btn-disabled">
-              {Math.floor(offset / LIMIT) + 1}
-            </button>
-            <button
-              className="join-item btn"
-              disabled={offset + LIMIT >= totalCount}
-              onClick={() => setOffset(offset + LIMIT)}
-            >
-              Next
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

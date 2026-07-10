@@ -4,7 +4,7 @@ export const constants = {
   baseUrl: "https://api.newprogressive.in", //deployed for school newprogressive PRODUCTION
   // baseUrl: "https://smsproject1.pythonanywhere.com/", //deployed for testing
   // baseUrl: "https://smsproject.pythonanywhere.com/", //deployed for school NPEPS deployed
-  //baseUrl: "https://newprogressive.pythonanywhere.com/", //deployed for school newprogressive testing
+  // baseUrl: "https://newprogressive.pythonanywhere.com/", //deployed for school newprogressive testing
   // baseUrl: "https://superkidz.pythonanywhere.com/",
   // baseUrl: "https://superkidsschool.pythonanywhere.com/", //deployed for school SUPER KIDS
   // baseUrl: "https://187gwsw1-8000.inc1.devtunnels.ms/", //farha

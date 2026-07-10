@@ -21,20 +21,37 @@ export const fetchOfficeStaffAttendanceRecords = async () => {
 
 export const saveOfficeStaffAttendance = async (staffList, attendance) => {
   try {
-    for (const s of staffList) {
-      const data = {
-        office_staff_id: s.id,
-        date: attendance[s.id].date,
-        status: attendance[s.id].status,
-      };
+    const payload = {
+      marked_at: new Date().toISOString().split("T")[0],
+      P: [],
+      A: [],
+      L: [],
+    };
 
-      await axios.post(`${BASE_URL}/a/office-staff-attendance/`, data);
-    }
-    return { success: true };
+    const statusMap = {
+      present: "P",
+      absent: "A",
+      leave: "L",
+    };
+
+    staffList.forEach((s) => {
+      const att = attendance[s.id];
+      if (!att?.status) return;
+
+      const shortStatus = statusMap[att.status];
+
+      if (shortStatus === "P") payload.P.push(s.id);
+      if (shortStatus === "A") payload.A.push(s.id);
+      if (shortStatus === "L") payload.L.push(s.id);
+    });
+
+    console.log("Office staff attendance payload:", payload);
+
+    return await axios.post(`${BASE_URL}/a/office-staff-attendance/`, payload);
   } catch (error) {
     console.error(
       "Error saving staff attendance:",
-      error.response?.data || error
+      error.response?.data || error,
     );
     throw error;
   }
@@ -43,33 +60,40 @@ export const saveOfficeStaffAttendance = async (staffList, attendance) => {
 // multiple office staff attendance
 export const saveAllOfficeStaffAttendance = async (
   attendanceMap,
-  staffList
+  staffList,
 ) => {
   try {
-    const payload = [];
+    const payload = {
+      marked_at: new Date().toISOString().split("T")[0],
+      P: [],
+      A: [],
+      L: [],
+    };
+
+    const statusMap = {
+      present: "P",
+      absent: "A",
+      leave: "L",
+    };
 
     staffList.forEach((s) => {
-      const attendanceData = attendanceMap[s.id];
-      const status = (attendanceData?.status || "").toLowerCase();
+      const att = attendanceMap[s.id];
+      if (!att?.status) return;
 
-      if (status === "present" || status === "absent" || status === "leave") {
-        payload.push({
-          office_staff_id: s.id,
-          status: status.charAt(0).toUpperCase() + status.slice(1),
-          date: attendanceData?.date || new Date().toISOString().split("T")[0],
-        });
-      }
+      const shortStatus = statusMap[att.status];
+
+      if (shortStatus === "P") payload.P.push(s.id);
+      if (shortStatus === "A") payload.A.push(s.id);
+      if (shortStatus === "L") payload.L.push(s.id);
     });
 
-    const res = await axios.post(
-      `${BASE_URL}/a/office-staff-attendance/`,
-      payload
-    );
-    return res;
+    console.log("Office staff attendance payload:", payload);
+
+    return await axios.post(`${BASE_URL}/a/office-staff-attendance/`, payload);
   } catch (error) {
     console.error(
       "Error saving ALL staff attendance:",
-      error.response?.data || error
+      error.response?.data || error,
     );
     throw error;
   }
@@ -80,11 +104,30 @@ export const updateOfficeStaffAttendance = async (id, payload) => {
   try {
     const response = await axios.put(
       `${BASE_URL}/a/office-staff-attendance/${id}/`,
-      payload
+      payload,
     );
     return response.data;
   } catch (error) {
     console.error("Error updating office staff attendance:", error);
+    throw error;
+  }
+};
+
+// Update student attendance
+export const updateStudentAttendance = async (id, payload) => {
+  try {
+    const response = await axios.put(
+      `${constants.baseUrl}/a/student-attendance/${id}/`,
+      payload,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error updating student attendance:", error);
     throw error;
   }
 };
@@ -155,7 +198,6 @@ export const fetchMarksheet = async (accessToken, id) => {
 
 export const fetchMarksheets = async (accessToken) => {
   try {
-
     const token = accessToken ? accessToken.trim() : "";
 
     if (!token) {
@@ -214,40 +256,10 @@ export const fetchStudentYearLevel = async () => {
   }
 };
 
-
-
-export const fetchStudentYearLevelByClass = async (year_level_id, session = null) => {
-  try {
-    let url = `${BASE_URL}/s/studentyearlevels/?level__id=${year_level_id}`;
-    if (session && session !== "All") {
-      url += `&year__year_name=${session}`;
-    }
-    console.log("Fetching URL:", url); // Debugging
-    const response = await axios.get(url);
-    return response.data;
-  } catch (err) {
-    console.error("Failed to fetch students:", err);
-    throw err;
-  }
-};
-
-
-export const fetchStudentSession = async (year__year_name) => {
+export const fetchStudentYearLevelByClass = async (year_level_id) => {
   try {
     const response = await axios.get(
-      `${BASE_URL}/s/studentyearlevels/?year__year_name=${year__year_name}`
-    );
-    return response.data;
-  } catch (err) {
-    console.error("Failed to fetch students:", err);
-    throw err;
-  }
-};
-
-export const fetchStudentYearLevelByClassAndSession = async (year__year_name, yearLevelId) => {
-  try {
-    const response = await axios.get(
-      `${BASE_URL}/s/studentyearlevels/?year__year_name=${year__year_name}&level__id=${yearLevelId}`
+      `${BASE_URL}/s/studentyearlevels/?level__id=${year_level_id}`,
     );
     return response.data;
   } catch (err) {
@@ -269,7 +281,7 @@ export const fetchTeachers = async (id) => {
 export const fetchOfficeStaff = async (id) => {
   try {
     const res = await axios.get(
-      `${BASE_URL}/d/officestaff/${id ? `${id}/` : ""}`
+      `${BASE_URL}/d/officestaff/${id ? `${id}/` : ""}`,
     );
     return res.data;
   } catch (err) {
@@ -337,7 +349,7 @@ export const fetchAllTeacherAssignments = async (accessToken) => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
     return response.data;
   } catch (err) {
@@ -390,7 +402,7 @@ export const fetchCity = async () => {
 export const fetchPeriodsByYearLevel = async (yearLevelId) => {
   try {
     const response = await axios.get(
-      `${BASE_URL}/d/periods/?year_level_id=${yearLevelId}`
+      `${BASE_URL}/d/periods/?year_level_id=${yearLevelId}`,
     );
     return response.data;
   } catch (err) {
@@ -425,7 +437,7 @@ export const addBankName = async (bankData) => {
 export const fetchAbsentTeachers = async (date) => {
   try {
     const { data } = await axios.get(
-      `${BASE_URL}/t/absent-teacher/?date_value=${date}`
+      `${BASE_URL}/t/absent-teacher/?date_value=${date}`,
     );
     return data?.absent_teachers || [];
   } catch (error) {
@@ -449,7 +461,7 @@ export const fetchAllocatedClasses = async (token) => {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      }
+      },
     );
     return response.data;
   } catch (error) {
@@ -476,7 +488,7 @@ export const fetchDirectorDashboard = async () => {
 export const fetchStudentCategoryDashboard = async () => {
   try {
     const response = await axios.get(
-      `${BASE_URL}/d/student-category-dashboard/`
+      `${BASE_URL}/d/student-category-dashboard/`,
     );
     return response.data;
   } catch (err) {
@@ -490,7 +502,7 @@ export const fetchStudentCategoryDashboard = async () => {
 export const fetchIncomeDistributionDashboard = async () => {
   try {
     const response = await axios.get(
-      `${BASE_URL}/d/income-distribution-dashboard/`
+      `${BASE_URL}/d/income-distribution-dashboard/`,
     );
     return response.data;
   } catch (err) {
@@ -526,7 +538,7 @@ export const fetchGuardianDashboard = async (id) => {
 export const getAttendanceByGuardianId = async (guardianId) => {
   try {
     const response = await axios.get(
-      `${BASE_URL}/a/api/report/?guardian_id=${guardianId}`
+      `${BASE_URL}/a/api/report/?guardian_id=${guardianId}`,
     );
     return response.data;
   } catch (error) {
@@ -576,7 +588,7 @@ export const fetchFeeDashboard = async () => {
 export const fetchFeeDashboardByMonth = async (month) => {
   try {
     const response = await axios.get(
-      `${BASE_URL}/d/fee-dashboard/?month=${month}`
+      `${BASE_URL}/d/fee-dashboard/?month=${month}`,
     );
     return response.data;
   } catch (err) {
@@ -620,7 +632,7 @@ export const fetchViewDocuments = async () => {
 export const fetchStudents1 = async (classId) => {
   try {
     const response = await axios.get(
-      `${BASE_URL}/s/studentyearlevels/?level__id=${classId}`
+      `${BASE_URL}/s/studentyearlevels/?level__id=${classId}`,
     );
     return response.data;
   } catch (err) {
@@ -642,7 +654,7 @@ export const fetchStudents2 = async (classId) => {
 export const fetchyearLevelData = async (classId) => {
   try {
     const response = await axios.get(
-      `${BASE_URL}/d/year-level-fee/${classId}/`
+      `${BASE_URL}/d/year-level-fee/${classId}/`,
     );
     return response.data;
   } catch (err) {
@@ -669,7 +681,7 @@ export const fetchEmployee = async (accessToken, role) => {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
     return response.data;
   } catch (err) {
@@ -681,7 +693,7 @@ export const fetchEmployee = async (accessToken, role) => {
 export const fetchSchoolExpense = async (
   accessToken,
   schoolYear,
-  categoryId
+  categoryId,
 ) => {
   try {
     const response = await axios.get(
@@ -690,7 +702,7 @@ export const fetchSchoolExpense = async (
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
     return response.data;
   } catch (err) {
@@ -707,7 +719,7 @@ export const fetchSchoolExpenseById = async (accessToken, id) => {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
     return response.data;
   } catch (err) {
@@ -724,7 +736,7 @@ export const fetchSalaryExpense = async (accessToken) => {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
     return response.data;
   } catch (err) {
@@ -741,7 +753,7 @@ export const fetchSalaryExpenseById = async (accessToken, id) => {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
     return response.data;
   } catch (err) {
@@ -785,7 +797,7 @@ export const fetchFeeSummary = async ({ selectedMonth, selectedClass }) => {
 export const fetchAttendanceData = async (date = "") => {
   try {
     const response = await axios.get(
-      `${BASE_URL}/a/director-dashboard/?date=${date}`
+      `${BASE_URL}/a/director-dashboard/?date=${date}`,
     );
 
     return response.data;
@@ -794,31 +806,36 @@ export const fetchAttendanceData = async (date = "") => {
     return null;
   }
 };
-export const fetchAttendanceDataStudent = async (date = "", studentId, month = "", year = "") => {
+export const fetchAttendanceDataStudent = async (
+  date = "",
+  studentId,
+  month = "",
+  year = "",
+) => {
   try {
     let url = `${BASE_URL}/a/student-dashboard/${studentId}/`;
-    
+
     // Build query parameters
     const params = new URLSearchParams();
-    
+
     if (date) {
-      params.append('date', date);
+      params.append("date", date);
     }
-    
+
     if (month) {
-      params.append('month', month);
+      params.append("month", month);
     }
-    
+
     if (year) {
-      params.append('year', year);
+      params.append("year", year);
     }
-    
+
     // Add query string if we have any parameters
     const queryString = params.toString();
     if (queryString) {
       url += `?${queryString}`;
     }
-    
+
     const response = await axios.get(url);
     return response.data;
   } catch (error) {
@@ -829,7 +846,7 @@ export const fetchAttendanceDataStudent = async (date = "", studentId, month = "
 export const fetchGuardianAttendanceData = async (date = "", guardianId) => {
   try {
     const response = await axios.get(
-      `${BASE_URL}/a/guardian/attendance/${guardianId}/?date=${date}`
+      `${BASE_URL}/a/guardian/attendance/${guardianId}/?date=${date}`,
     );
 
     return response.data;
@@ -842,13 +859,27 @@ export const fetchGuardianAttendanceData = async (date = "", guardianId) => {
 export const fetchTeacherAttendanceData = async (date = "", className) => {
   try {
     const response = await axios.get(
-      `${BASE_URL}/a/teacher-dashboard/?class_name=${className}&date=${date}`
+      `${BASE_URL}/a/teacher-dashboard/?class_name=${className}&date=${date}`,
     );
 
     return response.data;
   } catch (error) {
     console.error("Failed to fetch attendance data:", error);
     return null;
+  }
+};
+
+// In your Api.js file
+export const fetchStudentAttendanceData = async (year_level_id, date = "") => {
+  try {
+    // You might need to adjust the endpoint based on your actual API
+    const response = await axios.get(
+      `${BASE_URL}/a/student-attendance/?year_level=${year_level_id}&date=${date}`,
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Failed to fetch student attendance data:", error);
+    return [];
   }
 };
 
@@ -866,7 +897,7 @@ export const fetchAttendance = async (studentId, month, year) => {
   } catch (error) {
     console.error(
       "Failed to fetch attendance:",
-      error.response?.data || error.message
+      error.response?.data || error.message,
     );
     throw error.response?.data || new Error("Something went wrong.");
   }
@@ -875,7 +906,7 @@ export const fetchAttendance = async (studentId, month, year) => {
 export const fetchClassAttendance = async (className) => {
   try {
     const response = await axios.get(
-      `${BASE_URL}/a/api/report/?class=${className}`
+      `${BASE_URL}/a/api/report/?class=${className}`,
     );
     return response.data;
   } catch (err) {
@@ -910,7 +941,7 @@ export const fetchStudentFee = async (student_id) => {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
 
     console.log("Fetched student fee data:", response.data);
@@ -938,7 +969,7 @@ export const fetchGuardianChildren = async () => {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      }
+      },
     );
     return response.data;
   } catch (err) {
@@ -1134,7 +1165,7 @@ export const updateDiscount = async (accessToken, id, payload) => {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      }
+      },
     );
 
     return response.data;
@@ -1147,32 +1178,40 @@ export const updateDiscount = async (accessToken, id, payload) => {
 // teacher attendances
 export const saveTeacherAttendance = async (teachers, attendance) => {
   try {
-    const payload = [];
+    const today =
+      teachers.length > 0
+        ? attendance[teachers[0].id]?.date
+        : new Date().toISOString().split("T")[0];
+
+    const payload = {
+      marked_at: today,
+      P: [],
+      A: [],
+      L: [],
+    };
 
     teachers.forEach((teacher) => {
       const attendanceData = attendance[teacher.id];
-      const status = (attendanceData?.status || "").toLowerCase();
+      if (!attendanceData?.status) return;
 
-      if (status === "present" || status === "absent" || status === "leave") {
-        payload.push({
-          teacher_id: teacher.id,
-          status: status.charAt(0).toUpperCase() + status.slice(1),
-          date: attendanceData?.date || new Date().toISOString().split("T")[0],
-        });
+      const status = attendanceData.status.toLowerCase();
+
+      if (status === "present") {
+        payload.P.push(teacher.id);
+      } else if (status === "absent") {
+        payload.A.push(teacher.id);
+      } else if (status === "leave") {
+        payload.L.push(teacher.id);
       }
     });
 
-    console.log("Sending payload:", JSON.stringify(payload, null, 2));
+    const res = await axios.post(`${BASE_URL}/a/teacher-attendance/`, payload);
 
-    const res = await axios.post(
-      `${BASE_URL}/t/teacher-attendance/post/`,
-      payload
-    );
     return res;
   } catch (error) {
     console.error(
       "Error saving teacher attendance:",
-      error.response?.data || error
+      error.response?.data || error,
     );
     throw error;
   }
@@ -1183,7 +1222,7 @@ export const saveAllTeacherAttendance = saveTeacherAttendance;
 //  Techer attendance records
 export const fetchTeacherAttendanceRecords = async () => {
   try {
-    const response = await axios.get(`${BASE_URL}/t/teacher-attendance/get/`);
+    const response = await axios.get(`${BASE_URL}/a/teacher-attendance/`);
     return response.data;
   } catch (error) {
     console.error("Error fetching attendance records:", error);
@@ -1247,14 +1286,14 @@ export const sendDueFeeNotifications = async () => {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     return response.data;
   } catch (err) {
     console.error(
       "API sendDueFeeNotifications error:",
-      err.response?.data || err.message
+      err.response?.data || err.message,
     );
     throw err;
   }
@@ -1271,7 +1310,7 @@ export const createSalary = async (accessToken, payload) => {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
     return response.data;
   } catch (err) {
@@ -1330,7 +1369,7 @@ export const handleEditAdmissionForm = async (formData, id) => {
           "Content-Type": "application/json",
           // "Content-Type": "multipart/form-data",
         },
-      }
+      },
     );
     return response.data;
   } catch (err) {
@@ -1347,14 +1386,14 @@ export const updateStudentById = async (id, formData) => {
         headers: {
           "Content-Type": "multipart/form-data",
         },
-      }
+      },
     );
     console.log("Student profile updated response:", response.data);
     return response.data;
   } catch (error) {
     console.error(
       "Failed to update student profile:",
-      error.response?.data || error.message
+      error.response?.data || error.message,
     );
     throw (
       error.response?.data ||
@@ -1375,7 +1414,7 @@ export const editTeachersdetails = async (id, formData) => {
   } catch (error) {
     console.error(
       "Failed to update teacher details:",
-      error.response?.data || error.message
+      error.response?.data || error.message,
     );
     throw (
       error.response?.data ||
@@ -1393,14 +1432,14 @@ export const editOfficeStaffdetails = async (id, formData) => {
         headers: {
           "Content-Type": "multipart/form-data",
         },
-      }
+      },
     );
     console.log("Office staff updated response:", response.data);
     return response.data;
   } catch (error) {
     console.error(
       "Failed to update office staff details:",
-      error.response?.data || error.message
+      error.response?.data || error.message,
     );
     throw (
       error.response?.data ||
@@ -1429,7 +1468,7 @@ export const fetchGuardianAttendance = async (id, month, year) => {
 export const fetchCalendar = async (month, year) => {
   try {
     const response = await axios.get(
-      `${BASE_URL}/a/calendar/?month=${month}&year=${year}`
+      `${BASE_URL}/a/calendar/?month=${month}&year=${year}`,
     );
     console.log(response.data);
     return response.data;
@@ -1448,14 +1487,14 @@ export const importHolidays = async (year) => {
         headers: {
           "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     return response.data;
   } catch (error) {
     if (error.response) {
       throw new Error(
-        error.response.data.message || "Failed to import holidays"
+        error.response.data.message || "Failed to import holidays",
       );
     } else if (error.request) {
       throw new Error("No response received from server");
@@ -1518,13 +1557,13 @@ export const assignSubstitute = async (payload) => {
   try {
     const { data } = await axios.post(
       `${BASE_URL}/t/substitute-assign/`,
-      payload
+      payload,
     );
     return data;
   } catch (error) {
     console.error(
       "API Error in assignSubstitute:",
-      error.response?.data || error
+      error.response?.data || error,
     );
     throw error;
   }
@@ -1541,7 +1580,7 @@ export const editSalary = async (accessToken, payload, id) => {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
-      }
+      },
     );
     if (response.status == 200 || response.status == 201) {
       return response.data;
@@ -1556,8 +1595,8 @@ export const editSalary = async (accessToken, payload, id) => {
 export const updateTeacherAttendance = async (id, payload) => {
   try {
     const response = await axios.put(
-      `${BASE_URL}/t/teacher-attendance/get/${id}/`,
-      payload
+      `${BASE_URL}/a/teacher-attendance/${id}/`,
+      payload,
     );
     return response.data;
   } catch (err) {
@@ -1587,14 +1626,14 @@ export const updateSchoolIncome = async (id, payload) => {
             ? { "Content-Type": "multipart/form-data" }
             : { "Content-Type": "application/json" }),
         },
-      }
+      },
     );
 
     return response.data;
   } catch (err) {
     console.error(
       "API updateSchoolIncome error:",
-      err.response?.data || err.message
+      err.response?.data || err.message,
     );
     throw err;
   }
