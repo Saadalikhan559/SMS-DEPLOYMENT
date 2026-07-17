@@ -11,48 +11,44 @@ const Allclasses = () => {
   const [selectedSession, setSelectedSession] = useState("All");
 
   const getYearLevels = async () => {
-  setLoading(true);
-  setError(null);
+    setLoading(true);
+    setError(null);
 
-  try {
-    const data = await fetchYearLevels();
+    try {
+      const data = await fetchYearLevels();
 
-    const withCounts = await Promise.all(
-      data.map(async (level) => {
-        try {
-          // Fetch all students for this level
-          const allStudents = await fetchStudentYearLevelByClass(level.id);
-          
-          // Filter based on selected session
-          let filteredStudents = allStudents;
-          if (selectedSession !== "All") {
-            filteredStudents = allStudents.filter(
-              student => student.year_name === selectedSession
+      const withCounts = await Promise.all(
+        data.map(async (level) => {
+          try {
+            // Fetch students with session filter from API (no gender filter for counts)
+            const filteredStudents = await fetchStudentYearLevelByClass(
+              level.id, 
+              selectedSession !== "All" ? selectedSession : null,
+              null // No gender filter for counts
             );
+
+            return {
+              ...level,
+              student_count: filteredStudents.length,
+            };
+          } catch (err) {
+            console.error(`Error fetching students for level ${level.id}:`, err);
+            return {
+              ...level,
+              student_count: 0,
+            };
           }
+        })
+      );
 
-          return {
-            ...level,
-            student_count: filteredStudents.length,
-          };
-        } catch (err) {
-          console.error(`Error fetching students for level ${level.id}:`, err);
-          return {
-            ...level,
-            student_count: 0,
-          };
-        }
-      })
-    );
-
-    setYearLevels(withCounts);
-  } catch (err) {
-    console.error("Error fetching year levels:", err);
-    setError("Failed to fetch year levels. Please try again later.");
-  } finally {
-    setLoading(false);
-  }
-};
+      setYearLevels(withCounts);
+    } catch (err) {
+      console.error("Error fetching year levels:", err);
+      setError("Failed to fetch year levels. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     getYearLevels();
@@ -134,16 +130,28 @@ const Allclasses = () => {
                       {index + 1}
                     </td>
                     <td className="px-4 py-3 font-bold text-nowrap text-center capitalize">
-                      <Link
+                      {/* <Link
                         to={`/allStudentsPerClass/${record.id}`}
                         state={{ 
                           level_name: record.level_name,
-                          session: selectedSession // 👈 Pass selected session here
+                          year_level_name: selectedSession !== "All" ? selectedSession : ""
                         }}
                         className="textTheme hover:underline"
                       >
                         {record.level_name}
-                      </Link>
+                      </Link> */}
+                      <Link
+  to={`/allStudentsPerClass/${record.id}`}
+  state={{ 
+    level_name: record.level_name,
+    year_level_name: selectedSession !== "All" ? selectedSession : "",
+    level_id: record.id,
+    year_id: record.year_id // Make sure this is available in your data
+  }}
+  className="textTheme hover:underline"
+>
+  {record.level_name}
+</Link>
                     </td>
                     <td className="px-4 py-3 text-center text-nowrap">{record.student_count}</td>
                   </tr>

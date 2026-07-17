@@ -256,11 +256,22 @@ export const fetchStudentYearLevel = async () => {
   }
 };
 
-export const fetchStudentYearLevelByClass = async (year_level_id) => {
+
+export const fetchStudentYearLevelByClass = async (year_level_id, year_name = null, gender = null) => {
   try {
-    const response = await axios.get(
-      `${BASE_URL}/s/studentyearlevels/?level__id=${year_level_id}`,
-    );
+    let url = `${BASE_URL}/s/studentyearlevels/?level__id=${year_level_id}`;
+    
+    // Add year_name filter if provided
+    if (year_name && year_name !== "All") {
+      url += `&year__year_name=${encodeURIComponent(year_name)}`;
+    }
+    
+    // Add gender filter if provided
+    if (gender) {
+      url += `&student__gender=${encodeURIComponent(gender)}`;
+    }
+    
+    const response = await axios.get(url);
     return response.data;
   } catch (err) {
     console.error("Failed to fetch students:", err);
@@ -1676,11 +1687,29 @@ export const fetchSchoolIncomeById = async (id) => {
 };
 
 
-export const deactivateStudents = async (studentIds) => {
+// export const deactivateStudents = async (studentIds) => {
+//   try {
+//     const response = await axios.patch(
+//       `${BASE_URL}/s/graduate/bulk-deactivate/`,
+//       { student_ids: studentIds }
+//     );
+//     return response.data;
+//   } catch (err) {
+//     console.error("Failed to deactivate students:", err);
+//     throw err;
+//   }
+// };
+
+
+
+export const deactivateStudents = async (studentIds, reason = "TC") => {
   try {
     const response = await axios.patch(
       `${BASE_URL}/s/graduate/bulk-deactivate/`,
-      { student_ids: studentIds }
+      { 
+        student_ids: studentIds,
+        reason: reason 
+      }
     );
     return response.data;
   } catch (err) {
@@ -1715,6 +1744,31 @@ export const reactivateStudents = async (studentIds) => {
     return response.data;
   } catch (err) {
     console.error("Failed to reactivate students:", err);
+    throw err;
+  }
+};
+
+// Transfer Certificates API
+export const fetchTransferCertificates = async (page = 1, pageSize = 10) => {
+  try {
+    const authTokens = localStorage.getItem("authTokens");
+    const accessToken = authTokens ? JSON.parse(authTokens).access : null;
+
+    if (!accessToken) {
+      throw new Error("Please login again");
+    }
+
+    const response = await axios.get(
+      `${BASE_URL}/d/transfer-certificates/?page=${page}&page_size=${pageSize}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (err) {
+    console.error("Failed to fetch transfer certificates:", err);
     throw err;
   }
 };

@@ -762,6 +762,8 @@ import { ViewFeesDetails } from "../components/AdmissionProcess/ViewFeesDetails"
 import { CreateMarksheet } from "../components/Marksheet/CreateMarksheet";
 import EditMarksheet  from "../components/Marksheet/EditMarksheet";
 import NewAdmissionList from "../components/AdmissionProcess/Admissions/NewAdmissionList";
+import TransferCertificates from "../components/UploadDocs/ViewTC";
+import FeeStructure from "../components/AdmissionProcess/FeeStructure";
 
 export const routes = [
   {
@@ -836,6 +838,12 @@ export const routes = [
       constants.roles.teacher,
       constants.roles.guardian,
     ],
+  },
+  {
+    path: allRouterLink.feeStructure,
+    element: <FeeStructure />,
+    protected: true,
+    allowedRoles: [constants.roles.director, constants.roles.officeStaff],
   },
   {
     path: allRouterLink.HolidayCalendar,
@@ -1332,6 +1340,19 @@ export const routes = [
     protected: true,
     allowedRoles: [constants.roles.director, constants.roles.officeStaff],
   },
+  {
+    path: allRouterLink.transferCertificates,
+    element: <TransferCertificates />,
+    protected: true,
+    allowedRoles: [constants.roles.director, constants.roles.officeStaff],
+  },
+  {
+    path: allRouterLink.feeStructure,
+    element: <FeeStructure />,
+    protected: true,
+    allowedRoles: [constants.roles.director, constants.roles.officeStaff],
+  },
+
   // include all routes before this please
 
   {

@@ -269,7 +269,7 @@ const AllStaff = () => {
                           </Link>
                         </td>
                         <td className="px-4 py-3 text-gray-700 dark:text-gray-300 text-nowrap">
-                          {record.date_joined}
+                          {record.joining_date}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span

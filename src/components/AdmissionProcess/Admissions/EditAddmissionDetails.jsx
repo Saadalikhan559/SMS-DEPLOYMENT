@@ -553,194 +553,414 @@ export const EditAddmissionDetails = () => {
   }, [register]);
 
   // 🔥 FIXED: Main onSubmit function - Only sends dirty fields
+  // const onSubmit = async (data) => {
+  //   setLoading(true);
+
+  //   // ----- Helper functions -----
+  //   const handleOptionalField = (value) => {
+  //     if (value === "" || value === undefined || value === null) return null;
+  //     return value;
+  //   };
+
+  //   const handleOptionalNumber = (value) => {
+  //     if (value === "" || value === undefined || value === null) return null;
+  //     const num = parseFloat(value);
+  //     return isNaN(num) ? null : num;
+  //   };
+
+  //   const handleOptionalInteger = (value) => {
+  //     if (value === "" || value === undefined || value === null) return null;
+  //     const num = parseInt(value, 10);
+  //     return isNaN(num) ? null : num;
+  //   };
+
+  //   const handleDateField = (value) => {
+  //     if (!value) return null;
+  //     try {
+  //       const date = new Date(value);
+  //       if (isNaN(date.getTime())) return null;
+  //       return date.toISOString().split("T")[0];
+  //     } catch {
+  //       return null;
+  //     }
+  //   };
+
+  //   // ----- पूरा transformedData (सभी फ़ील्ड्स) -----
+  //   const transformedData = {
+  //     student: {
+  //       first_name: data.student.first_name || "",
+  //       middle_name: handleOptionalField(data.student.middle_name),
+  //       last_name: handleOptionalField(data.student.last_name),
+  //       email: data.student.email || "",
+  //       father_name: handleOptionalField(data.student.father_name),
+  //       mother_name: handleOptionalField(data.student.mother_name),
+  //       date_of_birth: handleDateField(data.student.date_of_birth),
+  //       gender: handleOptionalField(data.student.gender),
+  //       religion: handleOptionalField(data.student.religion),
+  //       category: handleOptionalField(data.student.category),
+  //       height: handleOptionalNumber(data.student.height),
+  //       weight: handleOptionalNumber(data.student.weight),
+  //       blood_group: handleOptionalField(data.student.blood_group),
+  //       number_of_siblings: handleOptionalInteger(data.student.number_of_siblings) || 0,
+  //       scholar_number: handleOptionalField(data.student.scholar_number),
+  //       aadhaar_number: handleOptionalField(data.student.aadhaar_number),
+  //       FMID_number: handleOptionalField(data.student.FMID_number),
+  //       apaar_number: handleOptionalField(data.student.apaar_number),
+  //       PEN_number: handleOptionalField(data.student.PEN_number),
+  //       BPL_number: handleOptionalField(data.student.BPL_number),
+  //       SSSMID: handleOptionalField(data.student.SSSMID),
+  //       class_section: handleOptionalField(data.class_section),
+  //       is_active: data.student.is_active || "true",
+  //     },
+  //     guardian: {
+  //       first_name: handleOptionalField(data.guardian.first_name),
+  //       middle_name: handleOptionalField(data.guardian.middle_name),
+  //       last_name: handleOptionalField(data.guardian.last_name),
+  //       email: handleOptionalField(data.guardian.email),
+  //       phone_no: handleOptionalField(data.guardian.phone_no),
+  //       annual_income: handleOptionalNumber(data.guardian.annual_income) || null,
+  //       means_of_livelihood: data.guardian.means_of_livelihood ? data.guardian.means_of_livelihood : null,
+  //       qualification: handleOptionalField(data.guardian.qualification),
+  //       occupation: handleOptionalField(data.guardian.occupation),
+  //       designation: handleOptionalField(data.guardian.designation),
+  //     },
+  //     address_input: {
+  //       house_no: handleOptionalInteger(data.address_input.house_no),
+  //       habitation: handleOptionalField(data.address_input.habitation),
+  //       ward_no: handleOptionalInteger(data.address_input.ward_no),
+  //       zone_no: handleOptionalInteger(data.address_input.zone_no),
+  //       block: handleOptionalField(data.address_input.block),
+  //       district: handleOptionalField(data.address_input.district),
+  //       division: handleOptionalField(data.address_input.division),
+  //       area_code: handleOptionalInteger(data.address_input.area_code),
+  //       country: handleOptionalField(data.address_input.country),
+  //       state: handleOptionalField(data.address_input.state),
+  //       city: handleOptionalField(data.address_input.city),
+  //       address_line: handleOptionalField(data.address_input.address_line),
+  //     },
+  //     banking_detail_input: {
+  //       account_no: handleOptionalInteger(data.banking_detail_input.account_no),
+  //       ifsc_code: handleOptionalField(data.banking_detail_input.ifsc_code),
+  //       holder_name: handleOptionalField(data.banking_detail_input.holder_name),
+  //       bank_name: handleOptionalField(data.banking_detail_input.bank_name),
+  //     },
+  //     guardian_type_input: handleOptionalField(data.guardian_type_input),
+  //     year_level: handleOptionalField(data.year_level),
+  //     school_year: handleOptionalField(data.school_year),
+  //     admission_date: handleDateField(data.admission_date),
+  //     previous_school_name: handleOptionalField(data.previous_school_name),
+  //     previous_standard_studied: handleOptionalField(data.previous_standard_studied),
+  //     tc_letter: handleOptionalField(data.tc_letter),
+  //     emergency_contact_no: handleOptionalField(data.emergency_contact_no),
+  //     entire_road_distance_from_home_to_school: handleOptionalField(data.entire_road_distance_from_home_to_school),
+  //     obtain_marks: handleOptionalNumber(data.obtain_marks),
+  //     total_marks: handleOptionalNumber(data.total_marks),
+  //     previous_percentage: handleOptionalNumber(data.previous_percentage),
+  //     is_rte: data.is_rte || false,
+  //     rte_number: data.is_rte ? handleOptionalField(data.rte_number) : null,
+  //     enrollment_no: handleOptionalField(data.enrollment_no),
+  //   };
+
+  //   // ----- Get dirty values from nested structure -----
+  //   const getDirtyValues = (dirtyFieldsObj, allValuesObj) => {
+  //     if (!dirtyFieldsObj || !allValuesObj) return {};
+
+  //     const result = {};
+  //     Object.keys(dirtyFieldsObj).forEach(key => {
+  //       const dirtyValue = dirtyFieldsObj[key];
+  //       const allValue = allValuesObj[key];
+
+  //       if (typeof dirtyValue === 'object' && !Array.isArray(dirtyValue)) {
+  //         if (allValue && typeof allValue === 'object' && !Array.isArray(allValue)) {
+  //           const nested = getDirtyValues(dirtyValue, allValue);
+  //           if (Object.keys(nested).length > 0) {
+  //             result[key] = nested;
+  //           }
+  //         }
+  //       } else if (dirtyValue === true) {
+  //         // Only include if value is not undefined, null, or empty string
+  //         if (allValue !== undefined && allValue !== null && allValue !== "") {
+  //           result[key] = allValue;
+  //         }
+  //       }
+  //     });
+
+  //     return result;
+  //   };
+
+  //   // Get only fields that were actually changed
+  //   const dirtyTransformed = getDirtyValues(dirtyFields, transformedData);
+
+  //   // If no fields were changed
+  //   if (Object.keys(dirtyTransformed).length === 0) {
+  //     setAlertMessage("No changes were made to update.");
+  //     setShowAlert(true);
+  //     setLoading(false);
+  //     return;
+  //   }
+
+  //   // ----- Create FormData from dirty fields only -----
+  //   const submitFormData = new FormData();
+
+  //   const appendToFormData = (obj, prefix = '') => {
+  //     Object.entries(obj).forEach(([key, value]) => {
+  //       const fullKey = prefix ? `${prefix}[${key}]` : key;
+
+  //       if (value && typeof value === 'object' && !Array.isArray(value) && value !== null) {
+  //         // Only append if nested object has values
+  //         if (Object.keys(value).length > 0) {
+  //           appendToFormData(value, fullKey);
+  //         }
+  //       } else if (value !== null && value !== undefined && value !== "") {
+  //         submitFormData.append(fullKey, value);
+  //       }
+  //     });
+  //   };
+
+  //   appendToFormData(dirtyTransformed);
+
+  //   // Debug log - Check what's being sent
+  //   console.log("🚀 Fields being updated:");
+  //   for (let pair of submitFormData.entries()) {
+  //     console.log(pair[0] + ': ' + pair[1]);
+  //   }
+
+  //   // ----- API Call -----
+  //   try {
+  //     await handleEditAdmissionForm(submitFormData, id);
+  //     setShowEditSuccessModal(true);
+  //     // Refresh data after successful update
+  //     await getAdmissionData();
+  //   } catch (error) {
+  //     console.error("Update error:", error.response?.data || error.message);
+  //     setAlertMessage(
+  //       `Failed to update the form: ${error.response?.data?.message || error.message}`
+  //     );
+  //     setShowAlert(true);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+
+
   const onSubmit = async (data) => {
-    setLoading(true);
+  setLoading(true);
 
-    // ----- Helper functions -----
-    const handleOptionalField = (value) => {
-      if (value === "" || value === undefined || value === null) return null;
-      return value;
-    };
+  // ----- Helper functions (keep these as they are) -----
+  const handleOptionalField = (value) => {
+    if (value === "" || value === undefined || value === null) return null;
+    return value;
+  };
 
-    const handleOptionalNumber = (value) => {
-      if (value === "" || value === undefined || value === null) return null;
-      const num = parseFloat(value);
-      return isNaN(num) ? null : num;
-    };
+  const handleOptionalNumber = (value) => {
+    if (value === "" || value === undefined || value === null) return null;
+    const num = parseFloat(value);
+    return isNaN(num) ? null : num;
+  };
 
-    const handleOptionalInteger = (value) => {
-      if (value === "" || value === undefined || value === null) return null;
-      const num = parseInt(value, 10);
-      return isNaN(num) ? null : num;
-    };
+  const handleOptionalInteger = (value) => {
+    if (value === "" || value === undefined || value === null) return null;
+    const num = parseInt(value, 10);
+    return isNaN(num) ? null : num;
+  };
 
-    const handleDateField = (value) => {
-      if (!value) return null;
-      try {
-        const date = new Date(value);
-        if (isNaN(date.getTime())) return null;
-        return date.toISOString().split("T")[0];
-      } catch {
-        return null;
-      }
-    };
-
-    // ----- पूरा transformedData (सभी फ़ील्ड्स) -----
-    const transformedData = {
-      student: {
-        first_name: data.student.first_name || "",
-        middle_name: handleOptionalField(data.student.middle_name),
-        last_name: handleOptionalField(data.student.last_name),
-        email: data.student.email || "",
-        father_name: handleOptionalField(data.student.father_name),
-        mother_name: handleOptionalField(data.student.mother_name),
-        date_of_birth: handleDateField(data.student.date_of_birth),
-        gender: handleOptionalField(data.student.gender),
-        religion: handleOptionalField(data.student.religion),
-        category: handleOptionalField(data.student.category),
-        height: handleOptionalNumber(data.student.height),
-        weight: handleOptionalNumber(data.student.weight),
-        blood_group: handleOptionalField(data.student.blood_group),
-        number_of_siblings: handleOptionalInteger(data.student.number_of_siblings) || 0,
-        scholar_number: handleOptionalField(data.student.scholar_number),
-        aadhaar_number: handleOptionalField(data.student.aadhaar_number),
-        FMID_number: handleOptionalField(data.student.FMID_number),
-        apaar_number: handleOptionalField(data.student.apaar_number),
-        PEN_number: handleOptionalField(data.student.PEN_number),
-        BPL_number: handleOptionalField(data.student.BPL_number),
-        SSSMID: handleOptionalField(data.student.SSSMID),
-        class_section: handleOptionalField(data.class_section),
-        is_active: data.student.is_active || "true",
-      },
-      guardian: {
-        first_name: handleOptionalField(data.guardian.first_name),
-        middle_name: handleOptionalField(data.guardian.middle_name),
-        last_name: handleOptionalField(data.guardian.last_name),
-        email: handleOptionalField(data.guardian.email),
-        phone_no: handleOptionalField(data.guardian.phone_no),
-        annual_income: handleOptionalNumber(data.guardian.annual_income) || null,
-        means_of_livelihood: data.guardian.means_of_livelihood ? data.guardian.means_of_livelihood : null,
-        qualification: handleOptionalField(data.guardian.qualification),
-        occupation: handleOptionalField(data.guardian.occupation),
-        designation: handleOptionalField(data.guardian.designation),
-      },
-      address_input: {
-        house_no: handleOptionalInteger(data.address_input.house_no),
-        habitation: handleOptionalField(data.address_input.habitation),
-        ward_no: handleOptionalInteger(data.address_input.ward_no),
-        zone_no: handleOptionalInteger(data.address_input.zone_no),
-        block: handleOptionalField(data.address_input.block),
-        district: handleOptionalField(data.address_input.district),
-        division: handleOptionalField(data.address_input.division),
-        area_code: handleOptionalInteger(data.address_input.area_code),
-        country: handleOptionalField(data.address_input.country),
-        state: handleOptionalField(data.address_input.state),
-        city: handleOptionalField(data.address_input.city),
-        address_line: handleOptionalField(data.address_input.address_line),
-      },
-      banking_detail_input: {
-        account_no: handleOptionalInteger(data.banking_detail_input.account_no),
-        ifsc_code: handleOptionalField(data.banking_detail_input.ifsc_code),
-        holder_name: handleOptionalField(data.banking_detail_input.holder_name),
-        bank_name: handleOptionalField(data.banking_detail_input.bank_name),
-      },
-      guardian_type_input: handleOptionalField(data.guardian_type_input),
-      year_level: handleOptionalField(data.year_level),
-      school_year: handleOptionalField(data.school_year),
-      admission_date: handleDateField(data.admission_date),
-      previous_school_name: handleOptionalField(data.previous_school_name),
-      previous_standard_studied: handleOptionalField(data.previous_standard_studied),
-      tc_letter: handleOptionalField(data.tc_letter),
-      emergency_contact_no: handleOptionalField(data.emergency_contact_no),
-      entire_road_distance_from_home_to_school: handleOptionalField(data.entire_road_distance_from_home_to_school),
-      obtain_marks: handleOptionalNumber(data.obtain_marks),
-      total_marks: handleOptionalNumber(data.total_marks),
-      previous_percentage: handleOptionalNumber(data.previous_percentage),
-      is_rte: data.is_rte || false,
-      rte_number: data.is_rte ? handleOptionalField(data.rte_number) : null,
-      enrollment_no: handleOptionalField(data.enrollment_no),
-    };
-
-    // ----- Get dirty values from nested structure -----
-    const getDirtyValues = (dirtyFieldsObj, allValuesObj) => {
-      if (!dirtyFieldsObj || !allValuesObj) return {};
-
-      const result = {};
-      Object.keys(dirtyFieldsObj).forEach(key => {
-        const dirtyValue = dirtyFieldsObj[key];
-        const allValue = allValuesObj[key];
-
-        if (typeof dirtyValue === 'object' && !Array.isArray(dirtyValue)) {
-          if (allValue && typeof allValue === 'object' && !Array.isArray(allValue)) {
-            const nested = getDirtyValues(dirtyValue, allValue);
-            if (Object.keys(nested).length > 0) {
-              result[key] = nested;
-            }
-          }
-        } else if (dirtyValue === true) {
-          // Only include if value is not undefined, null, or empty string
-          if (allValue !== undefined && allValue !== null && allValue !== "") {
-            result[key] = allValue;
-          }
-        }
-      });
-
-      return result;
-    };
-
-    // Get only fields that were actually changed
-    const dirtyTransformed = getDirtyValues(dirtyFields, transformedData);
-
-    // If no fields were changed
-    if (Object.keys(dirtyTransformed).length === 0) {
-      setAlertMessage("No changes were made to update.");
-      setShowAlert(true);
-      setLoading(false);
-      return;
-    }
-
-    // ----- Create FormData from dirty fields only -----
-    const submitFormData = new FormData();
-
-    const appendToFormData = (obj, prefix = '') => {
-      Object.entries(obj).forEach(([key, value]) => {
-        const fullKey = prefix ? `${prefix}[${key}]` : key;
-
-        if (value && typeof value === 'object' && !Array.isArray(value) && value !== null) {
-          // Only append if nested object has values
-          if (Object.keys(value).length > 0) {
-            appendToFormData(value, fullKey);
-          }
-        } else if (value !== null && value !== undefined && value !== "") {
-          submitFormData.append(fullKey, value);
-        }
-      });
-    };
-
-    appendToFormData(dirtyTransformed);
-
-    // Debug log - Check what's being sent
-    console.log("🚀 Fields being updated:");
-    for (let pair of submitFormData.entries()) {
-      console.log(pair[0] + ': ' + pair[1]);
-    }
-
-    // ----- API Call -----
+  const handleDateField = (value) => {
+    if (!value) return null;
     try {
-      await handleEditAdmissionForm(submitFormData, id);
-      setShowEditSuccessModal(true);
-      // Refresh data after successful update
-      await getAdmissionData();
-    } catch (error) {
-      console.error("Update error:", error.response?.data || error.message);
-      setAlertMessage(
-        `Failed to update the form: ${error.response?.data?.message || error.message}`
-      );
-      setShowAlert(true);
-    } finally {
-      setLoading(false);
+      const date = new Date(value);
+      if (isNaN(date.getTime())) return null;
+      return date.toISOString().split("T")[0];
+    } catch {
+      return null;
     }
   };
+
+  // ----- पूरा transformedData (सभी फ़ील्ड्स) -----
+  const transformedData = {
+    student: {
+      first_name: data.student.first_name || "",
+      middle_name: handleOptionalField(data.student.middle_name),
+      last_name: handleOptionalField(data.student.last_name),
+      email: data.student.email || "",
+      father_name: handleOptionalField(data.student.father_name),
+      mother_name: handleOptionalField(data.student.mother_name),
+      date_of_birth: handleDateField(data.student.date_of_birth),
+      gender: handleOptionalField(data.student.gender),
+      religion: handleOptionalField(data.student.religion),
+      category: handleOptionalField(data.student.category),
+      height: handleOptionalNumber(data.student.height),
+      weight: handleOptionalNumber(data.student.weight),
+      blood_group: handleOptionalField(data.student.blood_group),
+      number_of_siblings: handleOptionalInteger(data.student.number_of_siblings) || 0,
+      scholar_number: handleOptionalField(data.student.scholar_number),
+      aadhaar_number: handleOptionalField(data.student.aadhaar_number),
+      FMID_number: handleOptionalField(data.student.FMID_number),
+      apaar_number: handleOptionalField(data.student.apaar_number),
+      PEN_number: handleOptionalField(data.student.PEN_number),
+      BPL_number: handleOptionalField(data.student.BPL_number),
+      SSSMID: handleOptionalField(data.student.SSSMID),
+      class_section: handleOptionalField(data.class_section),
+      is_active: data.student.is_active || "true",
+    },
+    guardian: {
+      first_name: handleOptionalField(data.guardian.first_name),
+      middle_name: handleOptionalField(data.guardian.middle_name),
+      last_name: handleOptionalField(data.guardian.last_name),
+      email: handleOptionalField(data.guardian.email),
+      phone_no: handleOptionalField(data.guardian.phone_no),
+      annual_income: handleOptionalNumber(data.guardian.annual_income) || null,
+      means_of_livelihood: data.guardian.means_of_livelihood ? data.guardian.means_of_livelihood : null,
+      qualification: handleOptionalField(data.guardian.qualification),
+      occupation: handleOptionalField(data.guardian.occupation),
+      designation: handleOptionalField(data.guardian.designation),
+    },
+    address_input: {
+      house_no: handleOptionalInteger(data.address_input.house_no),
+      habitation: handleOptionalField(data.address_input.habitation),
+      ward_no: handleOptionalInteger(data.address_input.ward_no),
+      zone_no: handleOptionalInteger(data.address_input.zone_no),
+      block: handleOptionalField(data.address_input.block),
+      district: handleOptionalField(data.address_input.district),
+      division: handleOptionalField(data.address_input.division),
+      area_code: handleOptionalInteger(data.address_input.area_code),
+      country: handleOptionalField(data.address_input.country),
+      state: handleOptionalField(data.address_input.state),
+      city: handleOptionalField(data.address_input.city),
+      address_line: handleOptionalField(data.address_input.address_line),
+    },
+    banking_detail_input: {
+      account_no: handleOptionalInteger(data.banking_detail_input.account_no),
+      ifsc_code: handleOptionalField(data.banking_detail_input.ifsc_code),
+      holder_name: handleOptionalField(data.banking_detail_input.holder_name),
+      bank_name: handleOptionalField(data.banking_detail_input.bank_name),
+    },
+    guardian_type_input: handleOptionalField(data.guardian_type_input),
+    year_level: handleOptionalField(data.year_level),
+    school_year: handleOptionalField(data.school_year),
+    admission_date: handleDateField(data.admission_date),
+    previous_school_name: handleOptionalField(data.previous_school_name),
+    previous_standard_studied: handleOptionalField(data.previous_standard_studied),
+    tc_letter: handleOptionalField(data.tc_letter),
+    emergency_contact_no: handleOptionalField(data.emergency_contact_no),
+    entire_road_distance_from_home_to_school: handleOptionalField(data.entire_road_distance_from_home_to_school),
+    obtain_marks: handleOptionalNumber(data.obtain_marks),
+    total_marks: handleOptionalNumber(data.total_marks),
+    previous_percentage: handleOptionalNumber(data.previous_percentage),
+    is_rte: data.is_rte || false,
+    rte_number: data.is_rte ? handleOptionalField(data.rte_number) : null,
+    enrollment_no: handleOptionalField(data.enrollment_no),
+  };
+
+  // 🔥 FIX: Get dirty values but exclude admission_date unless explicitly changed
+  const getDirtyValues = (dirtyFieldsObj, allValuesObj) => {
+    if (!dirtyFieldsObj || !allValuesObj) return {};
+
+    const result = {};
+    Object.keys(dirtyFieldsObj).forEach(key => {
+      const dirtyValue = dirtyFieldsObj[key];
+      const allValue = allValuesObj[key];
+
+      // 🔥 Skip admission_date if it's the only field or if it hasn't been manually changed
+      // We'll handle this separately
+      if (key === 'admission_date' && !dirtyFieldsObj['admission_date']) {
+        return;
+      }
+
+      if (typeof dirtyValue === 'object' && !Array.isArray(dirtyValue)) {
+        if (allValue && typeof allValue === 'object' && !Array.isArray(allValue)) {
+          const nested = getDirtyValues(dirtyValue, allValue);
+          if (Object.keys(nested).length > 0) {
+            result[key] = nested;
+          }
+        }
+      } else if (dirtyValue === true) {
+        // Only include if value is not undefined, null, or empty string
+        if (allValue !== undefined && allValue !== null && allValue !== "") {
+          result[key] = allValue;
+        }
+      }
+    });
+
+    return result;
+  };
+
+  // Get only fields that were actually changed, but EXCLUDE admission_date
+  let dirtyTransformed = getDirtyValues(dirtyFields, transformedData);
+
+  // 🔥 CRITICAL FIX: Remove admission_date if it's the only field changed or if it wasn't manually changed
+  // We need to check if admission_date was the only field changed
+  const dirtyKeys = Object.keys(dirtyTransformed);
+  
+  // If admission_date is in dirty fields but it's the only field, remove it
+  if (dirtyKeys.length === 1 && dirtyKeys[0] === 'admission_date') {
+    dirtyTransformed = {};
+  }
+  
+  // Check if admission_date is in dirty fields and it wasn't actually changed by user
+  // We can check if the admission_date in dirtyFields is actually present
+  if (dirtyTransformed.admission_date) {
+    // Only keep admission_date if it was explicitly changed by user
+    // You can add additional logic here if needed
+  }
+
+  // If no fields were changed (or only admission_date was changed)
+  if (Object.keys(dirtyTransformed).length === 0) {
+    setAlertMessage("No changes were made to update.");
+    setShowAlert(true);
+    setLoading(false);
+    return;
+  }
+
+  // ----- Create FormData from dirty fields only -----
+  const submitFormData = new FormData();
+
+  const appendToFormData = (obj, prefix = '') => {
+    Object.entries(obj).forEach(([key, value]) => {
+      const fullKey = prefix ? `${prefix}[${key}]` : key;
+
+      // 🔥 Skip admission_date if it's being sent but wasn't changed
+      if (fullKey === 'admission_date') {
+        // Check if the field was actually changed by comparing with original data
+        // You can skip sending admission_date altogether for updates
+        // unless it was explicitly changed
+        return;
+      }
+
+      if (value && typeof value === 'object' && !Array.isArray(value) && value !== null) {
+        if (Object.keys(value).length > 0) {
+          appendToFormData(value, fullKey);
+        }
+      } else if (value !== null && value !== undefined && value !== "") {
+        submitFormData.append(fullKey, value);
+      }
+    });
+  };
+
+  appendToFormData(dirtyTransformed);
+
+  // Debug log - Check what's being sent
+  console.log("🚀 Fields being updated:");
+  for (let pair of submitFormData.entries()) {
+    console.log(pair[0] + ': ' + pair[1]);
+  }
+
+  // ----- API Call -----
+  try {
+    await handleEditAdmissionForm(submitFormData, id);
+    setShowEditSuccessModal(true);
+    // Refresh data after successful update
+    await getAdmissionData();
+  } catch (error) {
+    console.error("Update error:", error.response?.data || error.message);
+    setAlertMessage(
+      `Failed to update the form: ${error.response?.data?.message || error.message}`
+    );
+    setShowAlert(true);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const filteredCities = city
     .filter((c) => c.name.toLowerCase().includes(citySearchInput.toLowerCase()))

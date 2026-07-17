@@ -1868,6 +1868,7 @@ export const AdmissionForm = () => {
                 <option value="PCM">PCM (Physics, Chemistry, Mathematics)</option>
                 <option value="PCB">PCB (Physics, Chemistry, Biology)</option>
                 <option value="COMM">COMM (Commerce)</option>
+                <option value="ARTS">ARTS (Arts)</option>
               </select>
               {errors.class_section && (
                 <span className="text-error text-sm">
