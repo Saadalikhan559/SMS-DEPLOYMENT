@@ -2,8 +2,36 @@ import React, { useContext, useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { fetchStudentYearLevelByClass } from "../../services/api/Api";
 import { Link } from "react-router-dom";
-import { Loader } from "../../global/Loader";
 import { AuthContext } from "../../context/AuthContext";
+
+// Year mapping constants
+const YEAR_MAPPING = {
+  "2024-2025": 1,
+  "2025-2026": 2,
+  "2026-2027": 3,
+  "2027-2028": 4,
+  "2028-2029": 5,
+  "2029-2030": 6,
+};
+
+// Helper functions for year operations
+const getYearIdFromName = (yearName) => {
+  return YEAR_MAPPING[yearName] || null;
+};
+
+const getNextYearName = (currentYearName) => {
+  if (!currentYearName) return null;
+  const startYear = parseInt(currentYearName.split('-')[0]);
+  const nextStartYear = startYear + 1;
+  return `${nextStartYear}-${nextStartYear + 1}`;
+};
+
+const getPrevYearName = (currentYearName) => {
+  if (!currentYearName) return null;
+  const startYear = parseInt(currentYearName.split('-')[0]);
+  const prevStartYear = startYear - 1;
+  return `${prevStartYear}-${prevStartYear + 1}`;
+};
 
 const AllStudentsPerClass = () => {
   const { id } = useParams();
@@ -11,23 +39,35 @@ const AllStudentsPerClass = () => {
 
   const [students, setStudents] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [genderFilter, setGenderFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { userRole, axiosInstance } = useContext(AuthContext);
   const [selectedStudents, setSelectedStudents] = useState([]);
   const levelName = location.state?.level_name || "Unknown";
+  const yearLevelName = location.state?.year_level_name || "";
+  const currentLevelId = location.state?.level_id || id;
+  const currentYearId = location.state?.year_id || null;
 
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
+  const [alertTitle, setAlertTitle] = useState("");
 
   const getStudents = async () => {
     try {
-      const data = await fetchStudentYearLevelByClass(id);
+      setLoading(true);
+      const data = await fetchStudentYearLevelByClass(
+        id,
+        yearLevelName || null,
+        genderFilter || null
+      );
+
       const sortedData = [...data].sort((a, b) =>
         (a.student_name || "").localeCompare(b.student_name || "", "en", { sensitivity: "base" })
       );
 
       setStudents(sortedData);
+      setSelectedStudents([]);
     } catch (err) {
       console.error("Error fetching students:", err);
       setError("Failed to fetch students.");
@@ -38,14 +78,46 @@ const AllStudentsPerClass = () => {
 
   const handleStudentPromotion = async () => {
     if (selectedStudents.length === 0) {
+      setAlertTitle("Info");
       setAlertMessage("Please select at least one student.");
+      setShowAlert(true);
+      return;
+    }
+
+    // For promotion: move to next level and next year
+    const targetLevelId = parseInt(currentLevelId) + 1;
+    const nextYearName = getNextYearName(yearLevelName);
+    const targetYearId = getYearIdFromName(nextYearName);
+
+    // Validation checks
+    if (!targetYearId) {
+      setAlertTitle("Error");
+      setAlertMessage(`Could not determine next academic year. Current year: ${yearLevelName}`);
+      setShowAlert(true);
+      return;
+    }
+
+    if (targetLevelId > 6) {
+      setAlertTitle("Error");
+      setAlertMessage("Cannot promote beyond Level 6.");
       setShowAlert(true);
       return;
     }
 
     const payload = {
       student_ids: selectedStudents,
+      level_id: targetLevelId,
+      year_id: targetYearId,
     };
+
+    console.log("Promotion Payload:", payload);
+    console.log("Promotion Details:", {
+      fromLevel: currentLevelId,
+      toLevel: targetLevelId,
+      fromYear: yearLevelName,
+      toYear: nextYearName,
+      students: selectedStudents
+    });
 
     try {
       const response = await axiosInstance.post(
@@ -54,38 +126,240 @@ const AllStudentsPerClass = () => {
       );
 
       const data = response.data;
-      let message = `Promotion Results:\n`;
-      message += `Total: ${data.summary.total} | Promoted: ${data.summary.promoted} | Failed: ${data.summary.failed}\n\n`;
-      message += `Details:\n`;
+      console.log("Promotion Response:", data);
 
-      data.results.forEach((result) => {
-        const statusText =
-          result.status === "success" ? "[PROMOTED]" : "[FAILED]";
-        message += `${statusText} ${result.student_name}: ${result.reason}\n`;
-      });
-      setAlertMessage(message);
-      setShowAlert(true);
-      await getStudents();
-      if (data.summary.total > 0) {
-        setSelectedStudents([]);
-      }
-    } catch (error) {
-      if (error.response && error.response.data) {
-        const errorData = error.response.data;
-        if (errorData.results) {
-          let errorMessage = `Promotion Failed:\n`;
-          errorData.results.forEach((result) => {
-            const statusText =
-              result.status === "success" ? "[PROMOTED]" : "[FAILED]";
-            errorMessage += `${statusText} ${result.student_name}: ${result.reason}\n`;
-          });
-          setAlertMessage(errorMessage);
-        } else {
-          setAlertMessage(errorData.message || "Failed to promote students.");
+      let message = `✅ Promotion Successful!\n\n`;
+      message += `Moving from ${levelName} (Level ${currentLevelId}) to Level ${targetLevelId}\n`;
+      message += `Academic Year: ${yearLevelName} → ${nextYearName}\n\n`;
+
+      if (data.result && Array.isArray(data.result)) {
+        let promotedCount = 0;
+        let failedCount = 0;
+
+        data.result.forEach((item) => {
+          if (item.status === "success") {
+            promotedCount++;
+            message += `✅ Student: ${item.student_name}\n`;
+            message += `   From: ${item.from_level} (${item.from_year})\n`;
+            message += `   To: ${item.to_level} (${item.to_year})\n`;
+            message += `   Status: Success\n`;
+            message += `   Reason: ${item.reason || 'N/A'}\n\n`;
+          } else if (item.status === "failed") {
+            failedCount++;
+            message += `❌ Student: ${item.student_name}\n`;
+            message += `   Status: Failed\n`;
+            message += `   Reason: ${item.reason || 'Unknown error'}\n\n`;
+          }
+        });
+
+        message += `📊 Summary:\n`;
+        message += `Total: ${data.Summary?.total || data.result.length}\n`;
+        message += `Promoted: ${data.Summary?.promoted || promotedCount}\n`;
+        message += `Failed: ${data.Summary?.failed || failedCount}\n`;
+      } else if (data.result && !Array.isArray(data.result)) {
+        const item = data.result;
+        message += `Student: ${item.student_name}\n`;
+        message += `From: ${item.from_level} (${item.from_year})\n`;
+        message += `To: ${item.to_level} (${item.to_year})\n`;
+        message += `Status: ${item.status}\n`;
+        message += `Reason: ${item.reason || 'N/A'}\n`;
+
+        if (data.Summary) {
+          message += `\n📊 Summary:\n`;
+          message += `Total: ${data.Summary.total}\n`;
+          message += `Promoted: ${data.Summary.promoted}\n`;
+          message += `Failed: ${data.Summary.failed}\n`;
         }
       } else {
-        setAlertMessage("Failed to promote students. Please try again.");
+        message += `Total students processed: ${selectedStudents.length}\n`;
+        message += `Message: ${data.message || "Promotion completed successfully"}`;
       }
+
+      setAlertTitle("🎓 Promotion Successful");
+      setAlertMessage(message);
+      setShowAlert(true);
+
+      // Refresh the student list
+      await getStudents();
+      setSelectedStudents([]);
+
+    } catch (error) {
+      console.error("Promotion Error:", error);
+      let errorMessage = "❌ Promotion Failed!\n\n";
+
+      if (error.response) {
+        console.error("Error Response:", error.response.data);
+        const errorData = error.response.data;
+        
+        if (errorData.detail) {
+          errorMessage += `Error: ${errorData.detail}\n`;
+        } else if (errorData.error) {
+          errorMessage += `Error: ${errorData.error}\n`;
+        } else if (errorData.message) {
+          errorMessage += `Error: ${errorData.message}\n`;
+        } else {
+          errorMessage += `Error: ${JSON.stringify(errorData)}\n`;
+        }
+
+        if (errorData.result && Array.isArray(errorData.result)) {
+          errorMessage += `\nDetails:\n`;
+          errorData.result.forEach((item) => {
+            if (item.status === "failed") {
+              errorMessage += `❌ ${item.student_name || 'Unknown'}: ${item.reason || 'Unknown error'}\n`;
+            }
+          });
+        }
+        setAlertMessage(errorMessage);
+      } else {
+        errorMessage += "Failed to promote students. Please check your connection and try again.";
+        setAlertMessage(errorMessage);
+      }
+
+      setAlertTitle("❌ Promotion Failed");
+      setShowAlert(true);
+    }
+  };
+
+  const handleStudentDemotion = async () => {
+    if (selectedStudents.length === 0) {
+      setAlertTitle("Info");
+      setAlertMessage("Please select at least one student.");
+      setShowAlert(true);
+      return;
+    }
+
+    // For demotion: move to previous level and previous year
+    const targetLevelId = parseInt(currentLevelId) > 1 ? parseInt(currentLevelId) - 1 : 1;
+    const prevYearName = getPrevYearName(yearLevelName);
+    const targetYearId = getYearIdFromName(prevYearName);
+
+    // Validation checks
+    if (!targetYearId) {
+      setAlertTitle("Error");
+      setAlertMessage(`Could not determine previous academic year. Current year: ${yearLevelName}`);
+      setShowAlert(true);
+      return;
+    }
+
+    if (targetLevelId === parseInt(currentLevelId) && parseInt(currentLevelId) === 1) {
+      setAlertTitle("Error");
+      setAlertMessage("Cannot demote below Level 1.");
+      setShowAlert(true);
+      return;
+    }
+
+    const payload = {
+      student_ids: selectedStudents,
+      level_id: targetLevelId,
+      year_id: targetYearId,
+    };
+
+    console.log("Demotion Payload:", payload);
+    console.log("Demotion Details:", {
+      fromLevel: currentLevelId,
+      toLevel: targetLevelId,
+      fromYear: yearLevelName,
+      toYear: prevYearName,
+      students: selectedStudents
+    });
+
+    try {
+      const response = await axiosInstance.post(
+        `/d/student-promotion/promote/`,
+        payload,
+      );
+
+      const data = response.data;
+      console.log("Demotion Response:", data);
+
+      let message = `✅ Demotion Successful!\n\n`;
+      message += `Moving from ${levelName} (Level ${currentLevelId}) to Level ${targetLevelId}\n`;
+      message += `Academic Year: ${yearLevelName} → ${prevYearName}\n\n`;
+
+      if (data.result && Array.isArray(data.result)) {
+        let demotedCount = 0;
+        let failedCount = 0;
+
+        data.result.forEach((item) => {
+          if (item.status === "success") {
+            demotedCount++;
+            message += `✅ Student: ${item.student_name}\n`;
+            message += `   From: ${item.from_level} (${item.from_year})\n`;
+            message += `   To: ${item.to_level} (${item.to_year})\n`;
+            message += `   Status: Success\n`;
+            message += `   Reason: ${item.reason || 'N/A'}\n\n`;
+          } else if (item.status === "failed") {
+            failedCount++;
+            message += `❌ Student: ${item.student_name}\n`;
+            message += `   Status: Failed\n`;
+            message += `   Reason: ${item.reason || 'Unknown error'}\n\n`;
+          }
+        });
+
+        message += `📊 Summary:\n`;
+        message += `Total: ${data.Summary?.total || data.result.length}\n`;
+        message += `Demoted: ${data.Summary?.promoted || demotedCount}\n`;
+        message += `Failed: ${data.Summary?.failed || failedCount}\n`;
+      } else if (data.result && !Array.isArray(data.result)) {
+        const item = data.result;
+        message += `Student: ${item.student_name}\n`;
+        message += `From: ${item.from_level} (${item.from_year})\n`;
+        message += `To: ${item.to_level} (${item.to_year})\n`;
+        message += `Status: ${item.status}\n`;
+        message += `Reason: ${item.reason || 'N/A'}\n`;
+
+        if (data.Summary) {
+          message += `\n📊 Summary:\n`;
+          message += `Total: ${data.Summary.total}\n`;
+          message += `Demoted: ${data.Summary.promoted}\n`;
+          message += `Failed: ${data.Summary.failed}\n`;
+        }
+      } else {
+        message += `Total students processed: ${selectedStudents.length}\n`;
+        message += `Message: ${data.message || "Demotion completed successfully"}`;
+      }
+
+      setAlertTitle("📉 Demotion Successful");
+      setAlertMessage(message);
+      setShowAlert(true);
+
+      // Refresh the student list
+      await getStudents();
+      setSelectedStudents([]);
+
+    } catch (error) {
+      console.error("Demotion Error:", error);
+      let errorMessage = "❌ Demotion Failed!\n\n";
+
+      if (error.response) {
+        console.error("Error Response:", error.response.data);
+        const errorData = error.response.data;
+        
+        if (errorData.detail) {
+          errorMessage += `Error: ${errorData.detail}\n`;
+        } else if (errorData.error) {
+          errorMessage += `Error: ${errorData.error}\n`;
+        } else if (errorData.message) {
+          errorMessage += `Error: ${errorData.message}\n`;
+        } else {
+          errorMessage += `Error: ${JSON.stringify(errorData)}\n`;
+        }
+
+        if (errorData.result && Array.isArray(errorData.result)) {
+          errorMessage += `\nDetails:\n`;
+          errorData.result.forEach((item) => {
+            if (item.status === "failed") {
+              errorMessage += `❌ ${item.student_name || 'Unknown'}: ${item.reason || 'Unknown error'}\n`;
+            }
+          });
+        }
+        setAlertMessage(errorMessage);
+      } else {
+        errorMessage += "Failed to demote students. Please check your connection and try again.";
+        setAlertMessage(errorMessage);
+      }
+
+      setAlertTitle("❌ Demotion Failed");
       setShowAlert(true);
     }
   };
@@ -104,9 +378,14 @@ const AllStudentsPerClass = () => {
     }
   };
 
+  const handleGenderFilterChange = (e) => {
+    const value = e.target.value;
+    setGenderFilter(value);
+  };
+
   useEffect(() => {
     getStudents();
-  }, [id]);
+  }, [id, genderFilter]);
 
   const filteredStudents = students.filter((student) =>
     student.student_name?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -143,23 +422,48 @@ const AllStudentsPerClass = () => {
             <i className="fa-solid fa-graduation-cap mr-2" />
             Students in {levelName}
           </h1>
+          {yearLevelName && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Academic Year: {yearLevelName}
+            </p>
+          )}
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+            Level ID: {currentLevelId} | Year ID: {currentYearId || 'N/A'}
+          </p>
         </div>
 
-        {/* Search & Error */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-end gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-2">
-          <input
-            type="text"
-            placeholder="Search Student Name"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value.trimStart())}
-            className="border px-3 py-2 rounded w-full sm:w-64 dark:bg-gray-700 dark:text-white dark:border-gray-600"
-          />
-
-          {error && (
-            <div className="text-red-600 font-medium text-sm text-center sm:text-right w-full sm:w-auto">
-              {error}
+        {/* Search & Filters */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+            {/* Search Input */}
+            <div className="relative w-full sm:w-64">
+              <input
+                type="text"
+                placeholder="Search Student Name"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value.trimStart())}
+                className="border px-3 py-2 rounded w-full dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
             </div>
-          )}
+
+            {/* Gender Filter */}
+            <select
+              value={genderFilter}
+              onChange={handleGenderFilterChange}
+              className="border px-3 py-2 rounded dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-auto"
+            >
+              <option value="">All Genders</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          {/* Student Count */}
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            <i className="fa-solid fa-users mr-1"></i>
+            {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''}
+          </div>
         </div>
 
         {/* Table */}
@@ -183,9 +487,7 @@ const AllStudentsPerClass = () => {
                       <span className="font-semibold">Select All</span>
                     </div>
                   </th>
-
                   <th className="px-6 py-4 font-semibold">S.No</th>
-
                   <th className="px-6 py-4 font-semibold">Student Name</th>
                 </tr>
               </thead>
@@ -194,11 +496,14 @@ const AllStudentsPerClass = () => {
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {filteredStudents.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan="3"
-                      className="px-6 py-8 text-center text-gray-500 dark:text-gray-400"
-                    >
-                      No students found.
+                    <td colSpan="3" className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                      {genderFilter ? (
+                        <span>
+                          No {genderFilter} students found in {levelName} for {yearLevelName || "this session"}.
+                        </span>
+                      ) : (
+                        `No students found in ${levelName} for ${yearLevelName || "this session"}.`
+                      )}
                     </td>
                   </tr>
                 ) : (
@@ -243,27 +548,56 @@ const AllStudentsPerClass = () => {
 
           {/* Footer */}
           {(userRole === "director" || userRole === "teacher") && (
-            <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
+            <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {selectedStudents.length} student(s) selected
               </p>
 
-              <button
-                onClick={handleStudentPromotion}
-                disabled={selectedStudents.length === 0}
-                className={`bgTheme text-white btn`}
-              >
-                Promote Students
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={handleStudentPromotion}
+                  disabled={selectedStudents.length === 0}
+                  className={`bg-green-600 hover:bg-green-700 text-white btn px-6 py-2 rounded-lg transition
+                    ${selectedStudents.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'}`}
+                >
+                  <i className="fa-solid fa-arrow-up mr-2"></i>
+                  Promote
+                </button>
+
+                <button
+                  onClick={handleStudentDemotion}
+                  disabled={selectedStudents.length === 0}
+                  className={`bg-red-600 hover:bg-red-700 text-white btn px-6 py-2 rounded-lg transition
+                    ${selectedStudents.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'}`}
+                >
+                  <i className="fa-solid fa-arrow-down mr-2"></i>
+                  Demote
+                </button>
+              </div>
             </div>
           )}
         </div>
+
+        {/* Debug Info - Remove in production */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
+            <h4 className="text-sm font-semibold mb-2">Debug Information:</h4>
+            <div className="text-xs space-y-1">
+              <p>Current Level ID: {currentLevelId}</p>
+              <p>Current Year: {yearLevelName}</p>
+              <p>Current Year ID: {currentYearId}</p>
+              <p>Selected Students: {selectedStudents.length}</p>
+              <p>Total Students: {filteredStudents.length}</p>
+            </div>
+          </div>
+        )}
       </div>
 
+      {/* Alert Modal */}
       {showAlert && (
         <dialog className="modal modal-open">
           <div className="modal-box bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 max-w-2xl">
-            <h3 className="font-bold text-lg">Student Promotion Results</h3>
+            <h3 className="font-bold text-lg">{alertTitle}</h3>
 
             <div className="py-4 max-h-96 overflow-y-auto whitespace-pre-wrap font-mono text-sm">
               {alertMessage}

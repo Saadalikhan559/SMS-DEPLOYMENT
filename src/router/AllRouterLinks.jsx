@@ -181,6 +181,8 @@
         privacyPolicy:"/privacyPolicy",
         viewFeesDetails: "/viewFeesDetails/:id/:receipt_number",
         newAdmissionList: "/newAdmissionList",
+        transferCertificates: "/transfer-certificates",
+        feeStructure: "/fee-structure",
 
 
         // all routes before this

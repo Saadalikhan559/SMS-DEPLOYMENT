@@ -460,7 +460,7 @@ export const AdmissionFees = () => {
   const isStaffOrDirector =
     role === constants.roles.officeStaff || role === constants.roles.director;
   const paymentModes = isStaffOrDirector
-    ? ["cash", "cheque", "online"]
+    ? ["cash", "cheque", "online", "QR Payment"]
     : ["online"];
 
   // Auto-select all monthly fees - Only initialize if selectedGroups is empty
@@ -525,7 +525,7 @@ export const AdmissionFees = () => {
     if (!group) return;
 
     const due = parseFloat(group.fee.due_amount) || 0;
-    
+
     // Handle empty input
     if (value === '' || value === null || value === undefined) {
       setSelectedGroups((prev) => ({
@@ -539,7 +539,7 @@ export const AdmissionFees = () => {
     }
 
     const inputValue = parseFloat(value);
-    
+
     // Handle invalid input
     if (isNaN(inputValue)) {
       return;
@@ -587,131 +587,262 @@ export const AdmissionFees = () => {
   }, [selectedFeeIds, selectedGroups, annualFees, monthlyGroups, setValue]);
 
   // ----- Submit -----
-  const onSubmit = async (data) => {
-    const annualSelected = annualFees.filter((fee) =>
-      selectedFeeIds.includes(fee.fee_id)
-    );
-    const monthlySelected = monthlyGroups.filter(
-      (g) => selectedGroups[g.id] && selectedGroups[g.id].checked
-    );
+  // const onSubmit = async (data) => {
+  //   const annualSelected = annualFees.filter((fee) =>
+  //     selectedFeeIds.includes(fee.fee_id)
+  //   );
+  //   const monthlySelected = monthlyGroups.filter(
+  //     (g) => selectedGroups[g.id] && selectedGroups[g.id].checked
+  //   );
 
-    if (annualSelected.length === 0 && monthlySelected.length === 0) {
-      alert("Please select at least one fee to pay");
+  //   if (annualSelected.length === 0 && monthlySelected.length === 0) {
+  //     alert("Please select at least one fee to pay");
+  //     return;
+  //   }
+
+  //   const paymentMode = data.payment_mode.toLowerCase();
+  //   const chequeNumber = data.cheque_number || "";
+  //   const schoolYearId = selectedSchYear;
+  //   const paidAmount = parseFloat(data.paid_amount) || 0;
+
+  //   if (!selectedStudent || !studentYearId) {
+  //     alert("Please select a student.");
+  //     return;
+  //   }
+
+  //   const fees = [];
+
+  //   // Annual fees
+  //   annualSelected.forEach((fee) => {
+  //     const amount = parseFloat(fee.due_amount) || 0;
+  //     if (amount > 0) {
+  //       fees.push({
+  //         fee_type_id: fee.fee_id,
+  //         month: null,
+  //         amount: amount,
+  //       });
+  //     }
+  //   });
+
+  //   // Monthly fees - using collectAmount from selectedGroups
+  //   monthlySelected.forEach((group) => {
+  //     const sel = selectedGroups[group.id];
+  //     const totalGroupAmount = parseFloat(sel.collectAmount) || 0;
+
+  //     // Skip if amount is 0
+  //     if (totalGroupAmount <= 0) {
+  //       return;
+  //     }
+
+  //     const monthMap = {
+  //       "January": 1, "February": 2, "March": 3, "April": 4,
+  //       "May": 5, "June": 6, "July": 7, "August": 8,
+  //       "September": 9, "October": 10, "November": 11, "December": 12
+  //     };
+
+  //     const monthName = group.monthNames[0]?.split(' ')[0] || "";
+  //     const monthId = monthMap[monthName] || 0;
+
+  //     if (monthId >= 1 && monthId <= 12) {
+  //       fees.push({
+  //         fee_type_id: group.fee.fee_id,
+  //         month: monthId,
+  //         amount: totalGroupAmount,
+  //       });
+  //     } else {
+  //       console.error("Invalid month:", monthName);
+  //     }
+  //   });
+
+  //   if (fees.length === 0) {
+  //     alert("No valid fees to submit. Please check the selected fees.");
+  //     return;
+  //   }
+
+  //   const payload = {
+  //     student_year_id: studentYearId,
+  //     school_year_id: schoolYearId,
+  //     payment_method: paymentMode,
+  //     paid_amount: paidAmount,
+  //     fees: fees,
+  //     cheque_number: paymentMode === "cheque" ? chequeNumber : null,
+  //     parent_name: parentName,
+  //     grade: grade,
+  //     section: section,
+  //     term_from: termFrom,
+  //     term_to: termTo,
+  //   };
+
+  //   console.log("Submitting payload:", payload);
+
+  //   try {
+  //     const submitResInitial = await axiosInstance.post(
+  //       `${BASE_URL}/d/studentfees/submit_fee/`,
+  //       payload
+  //     );
+
+  //     if (submitResInitial.status === 200 || submitResInitial.status === 201) {
+  //       if (submitResInitial?.data) {
+  //         if (paymentMode === "online" && submitResInitial.data.redirect_url) {
+  //           setIsRedirecting(true);
+  //           window.location.href = submitResInitial.data.redirect_url;
+  //           return;
+  //         } else if (paymentMode === "cash" || paymentMode === "cheque") {
+  //           setPaymentStatus(submitResInitial.data);
+  //           setShowPaymentDialog1(true);
+
+  //           if (submitResInitial.data.receipt_number) {
+  //             const receiptNumber = submitResInitial.data.receipt_number;
+  //             setTimeout(() => {
+  //               fetchReceipt(receiptNumber);
+  //             }, 1500);
+  //           }
+  //         }
+  //       }
+  //     }
+  //   } catch (err) {
+  //     console.error("Payment failed", err);
+  //     console.error("Error response:", err.response?.data);
+  //     setPaymentStatus("Payment failed. Please try again.");
+  //     if (err.response?.data) {
+  //       const errorMsg = typeof err.response.data === 'object'
+  //         ? JSON.stringify(err.response.data)
+  //         : err.response.data;
+  //       alert(`Payment failed: ${errorMsg}`);
+  //     }
+  //   }
+  // };
+
+
+  // Submit handler mein changes
+const onSubmit = async (data) => {
+  const annualSelected = annualFees.filter((fee) =>
+    selectedFeeIds.includes(fee.fee_id)
+  );
+  const monthlySelected = monthlyGroups.filter(
+    (g) => selectedGroups[g.id] && selectedGroups[g.id].checked
+  );
+
+  if (annualSelected.length === 0 && monthlySelected.length === 0) {
+    alert("Please select at least one fee to pay");
+    return;
+  }
+
+  const paymentMode = data.payment_mode.toLowerCase();
+  const chequeNumber = data.cheque_number || "";
+  const schoolYearId = selectedSchYear;
+  const paidAmount = parseFloat(data.paid_amount) || 0;
+
+  if (!selectedStudent || !studentYearId) {
+    alert("Please select a student.");
+    return;
+  }
+
+  const fees = [];
+
+  // Annual fees
+  annualSelected.forEach((fee) => {
+    const amount = parseFloat(fee.due_amount) || 0;
+    if (amount > 0) {
+      fees.push({
+        fee_type_id: fee.fee_id,
+        month: null,
+        amount: amount,
+      });
+    }
+  });
+
+  // Monthly fees - using collectAmount from selectedGroups
+  monthlySelected.forEach((group) => {
+    const sel = selectedGroups[group.id];
+    const totalGroupAmount = parseFloat(sel.collectAmount) || 0;
+
+    // Skip if amount is 0
+    if (totalGroupAmount <= 0) {
       return;
     }
 
-    const paymentMode = data.payment_mode.toLowerCase();
-    const chequeNumber = data.cheque_number || "";
-    const schoolYearId = selectedSchYear;
-    const paidAmount = parseFloat(data.paid_amount) || 0;
-
-    if (!selectedStudent || !studentYearId) {
-      alert("Please select a student.");
-      return;
-    }
-
-    const fees = [];
-    
-    // Annual fees
-    annualSelected.forEach((fee) => {
-      const amount = parseFloat(fee.due_amount) || 0;
-      if (amount > 0) {
-        fees.push({
-          fee_type_id: fee.fee_id,
-          month: null,
-          amount: amount,
-        });
-      }
-    });
-
-    // Monthly fees - using collectAmount from selectedGroups
-    monthlySelected.forEach((group) => {
-      const sel = selectedGroups[group.id];
-      const totalGroupAmount = parseFloat(sel.collectAmount) || 0;
-      
-      // Skip if amount is 0
-      if (totalGroupAmount <= 0) {
-        return;
-      }
-      
-      const monthMap = {
-        "January": 1, "February": 2, "March": 3, "April": 4,
-        "May": 5, "June": 6, "July": 7, "August": 8,
-        "September": 9, "October": 10, "November": 11, "December": 12
-      };
-
-      const monthName = group.monthNames[0]?.split(' ')[0] || "";
-      const monthId = monthMap[monthName] || 0;
-
-      if (monthId >= 1 && monthId <= 12) {
-        fees.push({
-          fee_type_id: group.fee.fee_id,
-          month: monthId,
-          amount: totalGroupAmount,
-        });
-      } else {
-        console.error("Invalid month:", monthName);
-      }
-    });
-
-    if (fees.length === 0) {
-      alert("No valid fees to submit. Please check the selected fees.");
-      return;
-    }
-
-    const payload = {
-      student_year_id: studentYearId,
-      school_year_id: schoolYearId,
-      payment_method: paymentMode,
-      paid_amount: paidAmount,
-      fees: fees,
-      cheque_number: paymentMode === "cheque" ? chequeNumber : null,
-      parent_name: parentName,
-      grade: grade,
-      section: section,
-      term_from: termFrom,
-      term_to: termTo,
+    const monthMap = {
+      "January": 1, "February": 2, "March": 3, "April": 4,
+      "May": 5, "June": 6, "July": 7, "August": 8,
+      "September": 9, "October": 10, "November": 11, "December": 12
     };
 
-    console.log("Submitting payload:", payload);
+    const monthName = group.monthNames[0]?.split(' ')[0] || "";
+    const monthId = monthMap[monthName] || 0;
 
-    try {
-      const submitResInitial = await axiosInstance.post(
-        `${BASE_URL}/d/studentfees/submit_fee/`,
-        payload
-      );
+    if (monthId >= 1 && monthId <= 12) {
+      fees.push({
+        fee_type_id: group.fee.fee_id,
+        month: monthId,
+        amount: totalGroupAmount,
+      });
+    } else {
+      console.error("Invalid month:", monthName);
+    }
+  });
 
-      if (submitResInitial.status === 200 || submitResInitial.status === 201) {
-        if (submitResInitial?.data) {
-          if (paymentMode === "online" && submitResInitial.data.redirect_url) {
-            setIsRedirecting(true);
-            window.location.href = submitResInitial.data.redirect_url;
-            return;
-          } else if (paymentMode === "cash" || paymentMode === "cheque") {
-            setPaymentStatus(submitResInitial.data);
-            setShowPaymentDialog1(true);
+  if (fees.length === 0) {
+    alert("No valid fees to submit. Please check the selected fees.");
+    return;
+  }
 
-            if (submitResInitial.data.receipt_number) {
-              const receiptNumber = submitResInitial.data.receipt_number;
-              setTimeout(() => {
-                fetchReceipt(receiptNumber);
-              }, 1500);
-            }
+  const payload = {
+    student_year_id: studentYearId,
+    school_year_id: schoolYearId,
+    payment_method: paymentMode,
+    paid_amount: paidAmount,
+    fees: fees,
+    cheque_number: paymentMode === "cheque" ? chequeNumber : null,
+    parent_name: parentName,
+    grade: grade,
+    section: section,
+    term_from: termFrom,
+    term_to: termTo,
+  };
+
+  console.log("Submitting payload:", payload);
+
+  try {
+    const submitResInitial = await axiosInstance.post(
+      `${BASE_URL}/d/studentfees/submit_fee/`,
+      payload
+    );
+
+    if (submitResInitial.status === 200 || submitResInitial.status === 201) {
+      if (submitResInitial?.data) {
+        // 🔥 YAHAN CHANGE: Online mode ke liye alag se handle karo
+        if (paymentMode === "online" && submitResInitial.data.redirect_url) {
+          setIsRedirecting(true);
+          window.location.href = submitResInitial.data.redirect_url;
+          return;
+        } 
+        // 🔥 YAHAN CHANGE: Cash, Cheque, aur QR Payment sabko offline treat karo
+        else if (paymentMode === "cash" || paymentMode === "cheque" || paymentMode === "qr payment") {
+          setPaymentStatus(submitResInitial.data);
+          setShowPaymentDialog1(true);
+
+          if (submitResInitial.data.receipt_number) {
+            const receiptNumber = submitResInitial.data.receipt_number;
+            setTimeout(() => {
+              fetchReceipt(receiptNumber);
+            }, 1500);
           }
         }
       }
-    } catch (err) {
-      console.error("Payment failed", err);
-      console.error("Error response:", err.response?.data);
-      setPaymentStatus("Payment failed. Please try again.");
-      if (err.response?.data) {
-        const errorMsg = typeof err.response.data === 'object'
-          ? JSON.stringify(err.response.data)
-          : err.response.data;
-        alert(`Payment failed: ${errorMsg}`);
-      }
     }
-  };
+  } catch (err) {
+    console.error("Payment failed", err);
+    console.error("Error response:", err.response?.data);
+    setPaymentStatus("Payment failed. Please try again.");
+    if (err.response?.data) {
+      const errorMsg = typeof err.response.data === 'object'
+        ? JSON.stringify(err.response.data)
+        : err.response.data;
+      alert(`Payment failed: ${errorMsg}`);
+    }
+  }
+};
 
   const filteredStudents = students
     ?.filter((student) =>
@@ -1019,7 +1150,7 @@ export const AdmissionFees = () => {
                   type="text"
                   className="input input-bordered w-full focus:outline-none bg-gray-100 cursor-not-allowed mt-1 font-medium text-gray-800"
                   value={grade}
-                  disabled                  readOnly
+                  disabled readOnly
                   placeholder="Grade will auto-populate"
                 />
               </div>
@@ -1063,8 +1194,8 @@ export const AdmissionFees = () => {
                     type="button"
                     onClick={() => handleMonthSelection(month)}
                     className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${selectedMonths.includes(month)
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-100'
                       }`}
                   >
                     {month}
@@ -1293,8 +1424,8 @@ export const AdmissionFees = () => {
           {/* Payment Details - Paid Amount is auto-filled and read-only */}
           <div
             className={`grid gap-6 mt-6 ${selectedPaymentMode === "cheque"
-                ? "grid-cols-1 md:grid-cols-3"
-                : "grid-cols-1 md:grid-cols-2"
+              ? "grid-cols-1 md:grid-cols-3"
+              : "grid-cols-1 md:grid-cols-2"
               }`}
           >
             <div className="form-control">
@@ -1310,7 +1441,7 @@ export const AdmissionFees = () => {
                   }`}
                 {...register("paid_amount", {
                   required: "Amount is required",
-                  min: { value: 0.01},
+                  min: { value: 0.01 },
                 })}
                 value={watch("paid_amount")}
                 readOnly
@@ -1421,8 +1552,8 @@ export const AdmissionFees = () => {
             <button
               type="submit"
               className={`btn bgTheme text-white w-52 ${isSubmitDisabled
-                  ? "opacity-50 cursor-not-allowed"
-                  : "hover:bg-purple-700"
+                ? "opacity-50 cursor-not-allowed"
+                : "hover:bg-purple-700"
                 }`}
               disabled={isSubmitDisabled}
             >

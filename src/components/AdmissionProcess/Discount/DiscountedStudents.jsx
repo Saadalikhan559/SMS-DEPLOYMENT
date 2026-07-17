@@ -160,7 +160,7 @@ const DiscountedStudents = () => {
                       Fee Type
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-semibold whitespace-nowrap">
-                      Discount Name
+                    Year Level
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-semibold whitespace-nowrap">
                       Discount Amount
@@ -194,7 +194,7 @@ const DiscountedStudents = () => {
                           {s.fee_type_name}
                         </td>
                         <td className="px-4 py-3 text-gray-700 dark:text-gray-200 whitespace-nowrap">
-                          {s.discount_name}
+                          {s.year_level}
                         </td>
                         <td className="px-4 py-3 text-gray-700 dark:text-gray-200 whitespace-nowrap">
                           ₹{s.discount_amount}
