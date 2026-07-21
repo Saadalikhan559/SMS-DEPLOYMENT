@@ -1748,6 +1748,70 @@ export const reactivateStudents = async (studentIds) => {
   }
 };
 
+
+// ===================== STAFF DEACTIVATION/REACTIVATION APIs =====================
+
+// Fetch inactive users
+export const fetchInactiveUsers = async (accessToken) => {
+  try {
+    const response = await axios.get(
+      `${BASE_URL}/d/inactive-user/`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (err) {
+    console.error("Failed to fetch inactive users:", err);
+    throw err;
+  }
+};
+
+// Deactivate users (staff/teachers)
+export const deactivateUsers = async (accessToken, userIds, reason) => {
+  try {
+    const response = await axios.post(
+      `${BASE_URL}/d/deactivate-user/`,
+      { 
+        user_id: userIds, // 
+        reason: reason 
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (err) {
+    console.error("Failed to deactivate users:", err);
+    throw err;
+  }
+};
+
+// Reactivate users (staff/teachers)
+export const reactivateUsers = async (accessToken, userIds) => {
+  try {
+    const response = await axios.post(
+      `${BASE_URL}/d/reactivate-user/`,
+      { user_id: userIds }, // This expects an array of user IDs
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    return response.data;
+  } catch (err) {
+    console.error("Failed to reactivate users:", err);
+    throw err;
+  }
+};
+
+
+
 // Transfer Certificates API
 export const fetchTransferCertificates = async (page = 1, pageSize = 10) => {
   try {
