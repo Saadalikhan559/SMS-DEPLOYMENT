@@ -266,8 +266,10 @@ const FeeSummaryTable = () => {
   }
 
   return (
-    <div className="min-h-screen p-5 bg-gray-50 dark:bg-gray-900 mb-24 md:mb-10">
-      <div className="bg-white dark:bg-gray-800 max-w-7xl p-6 rounded-lg shadow-lg mx-auto">
+    // <div className="min-h-screen p-5 bg-gray-50 dark:bg-gray-900 mb-24 md:mb-10">
+    <div className="min-h-screen px-2 py-5 bg-gray-50 dark:bg-gray-900 mb-24 md:mb-10">
+      {/* <div className="bg-white dark:bg-gray-800 max-w-7xl p-6 rounded-lg shadow-lg mx-auto"> */}
+      <div className="bg-white dark:bg-gray-800 w-[96%] max-w-[1700px] p-6 rounded-xl shadow-lg mx-auto">
         <div className="mb-4">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 text-center">
             <i className="fa-solid fa-graduation-cap mr-2"></i> Students Fee

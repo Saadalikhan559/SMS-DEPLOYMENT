@@ -427,9 +427,6 @@ const AllStudentsPerClass = () => {
               Academic Year: {yearLevelName}
             </p>
           )}
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-            Level ID: {currentLevelId} | Year ID: {currentYearId || 'N/A'}
-          </p>
         </div>
 
         {/* Search & Filters */}
@@ -577,20 +574,6 @@ const AllStudentsPerClass = () => {
             </div>
           )}
         </div>
-
-        {/* Debug Info - Remove in production */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
-            <h4 className="text-sm font-semibold mb-2">Debug Information:</h4>
-            <div className="text-xs space-y-1">
-              <p>Current Level ID: {currentLevelId}</p>
-              <p>Current Year: {yearLevelName}</p>
-              <p>Current Year ID: {currentYearId}</p>
-              <p>Selected Students: {selectedStudents.length}</p>
-              <p>Total Students: {filteredStudents.length}</p>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Alert Modal */}
