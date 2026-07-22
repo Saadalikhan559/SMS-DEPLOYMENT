@@ -10,6 +10,7 @@ const NewAdmissionList = () => {
   const { axiosInstance } = useContext(AuthContext);
 
   const [students, setStudents] = useState([]);
+  const [allStudents, setAllStudents] = useState([]); // Store all students for filtering
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -41,7 +42,7 @@ const NewAdmissionList = () => {
   }, []);
 
   // ------------------------------------------------------------
-  // FETCH ADMISSIONS (current page) – FIXED
+  // FETCH ADMISSIONS (current page)
   // ------------------------------------------------------------
   const getAdmissions = async () => {
     try {
@@ -56,7 +57,6 @@ const NewAdmissionList = () => {
         params,
       });
 
-      // ✅ CORRECT: data.results is the array, data.school_year is at the root
       setStudents(res.data.results || []);
       setSchoolYear(res.data.school_year || "");
       setCount(res.data.count || 0);
@@ -68,6 +68,28 @@ const NewAdmissionList = () => {
       setLoading(false);
     }
   };
+
+  // ------------------------------------------------------------
+  // FETCH ALL STUDENTS FOR FILTERING AND DOWNLOAD
+  // ------------------------------------------------------------
+  const fetchAllStudents = async () => {
+    try {
+      const res = await axiosInstance.get("d/new-admission/");
+      return res.data.results || [];
+    } catch (err) {
+      console.error("Error fetching all students:", err);
+      return [];
+    }
+  };
+
+  // Load all students when component mounts
+  useEffect(() => {
+    const loadAllData = async () => {
+      const allData = await fetchAllStudents();
+      setAllStudents(allData);
+    };
+    loadAllData();
+  }, []);
 
   useEffect(() => {
     getAdmissions();
@@ -81,59 +103,98 @@ const NewAdmissionList = () => {
     setOffset(0);
   };
 
-  // Filter students (search + class)
-  const filteredStudents = students.filter((student) => {
-    const fullName = `${student.student_input?.first_name || ""} ${
-      student.student_input?.middle_name || ""
-    } ${student.student_input?.last_name || ""}`.toLowerCase();
-
-    const search = filters.search.toLowerCase();
-
-    const matchesSearch =
-      fullName.includes(search) ||
-      (student.student_input?.roll_number || "")
-        .toLowerCase()
-        .includes(search);
-
-    const matchesClass =
-      !filters.year_level || student.year_level === filters.year_level;
-
-    return matchesSearch && matchesClass;
-  });
-
   // ------------------------------------------------------------
-  // FETCH ALL DATA FOR DOWNLOAD – FIXED
+  // FILTER ALL STUDENTS (NOT just current page)
   // ------------------------------------------------------------
-  const fetchAllAdmissions = async () => {
-    try {
-      const res = await axiosInstance.get("d/new-admission/"); // no params → all records
-      // ✅ CORRECT: data.results is the array
-      return res.data.results || [];
-    } catch (err) {
-      console.error("Error fetching all admissions:", err);
-      alert("Failed to load complete data. Please try again.");
-      return [];
-    }
+  const getFilteredAllStudents = () => {
+    return allStudents.filter((student) => {
+      const fullName = `${student.student_input?.first_name || ""} ${
+        student.student_input?.middle_name || ""
+      } ${student.student_input?.last_name || ""}`.toLowerCase();
+
+      const search = filters.search.toLowerCase();
+
+      const matchesSearch =
+        fullName.includes(search) ||
+        (student.student_input?.roll_number || "")
+          .toLowerCase()
+          .includes(search);
+
+      // ✅ Fixed: Exact match with normalization
+      const studentClass = (student.year_level || "").trim();
+      const filterClass = (filters.year_level || "").trim();
+      
+      const matchesClass = !filters.year_level || studentClass === filterClass;
+
+      return matchesSearch && matchesClass;
+    });
   };
 
+  // Get filtered students for current page display
+  const getFilteredStudentsForPage = () => {
+    const filtered = getFilteredAllStudents();
+    // Paginate the filtered results
+    const start = offset;
+    const end = offset + LIMIT;
+    return filtered.slice(start, end);
+  };
+
+  // Get total count of filtered students
+  const getFilteredCount = () => {
+    return getFilteredAllStudents().length;
+  };
+
+  // Display students for current page
+  const displayStudents = getFilteredStudentsForPage();
+  const displayCount = getFilteredCount();
+
   // ------------------------------------------------------------
-  // UNIFIED DOWNLOAD HANDLER
+  // UNIFIED DOWNLOAD HANDLER - Uses allStudents with filters
   // ------------------------------------------------------------
   const handleDownload = async (type) => {
     setShowDownloadOptions(false);
     setIsDownloading(true);
 
     try {
-      const allStudents = await fetchAllAdmissions();
-      if (!allStudents.length) {
-        alert("No data to export.");
+      // Use already fetched allStudents or fetch if empty
+      let dataToExport = allStudents;
+      
+      if (!dataToExport.length) {
+        dataToExport = await fetchAllStudents();
+        setAllStudents(dataToExport);
+      }
+
+      // Apply current filters to download data
+      const filteredData = dataToExport.filter((student) => {
+        const fullName = `${student.student_input?.first_name || ""} ${
+          student.student_input?.middle_name || ""
+        } ${student.student_input?.last_name || ""}`.toLowerCase();
+
+        const search = filters.search.toLowerCase();
+
+        const matchesSearch =
+          fullName.includes(search) ||
+          (student.student_input?.roll_number || "")
+            .toLowerCase()
+            .includes(search);
+
+        const studentClass = (student.year_level || "").trim();
+        const filterClass = (filters.year_level || "").trim();
+        
+        const matchesClass = !filters.year_level || studentClass === filterClass;
+
+        return matchesSearch && matchesClass;
+      });
+
+      if (!filteredData.length) {
+        alert("No data to export with current filters.");
         return;
       }
 
       if (type === "pdf") {
-        handleDownloadStudentDataPDF(allStudents);
+        handleDownloadStudentDataPDF(filteredData);
       } else if (type === "excel") {
-        handleDownloadExcel(allStudents);
+        handleDownloadExcel(filteredData);
       }
     } catch (err) {
       console.error(err);
@@ -222,6 +283,14 @@ const NewAdmissionList = () => {
       align: "right",
     });
     doc.text(`School Year: ${schoolYear}`, margin, 18);
+    
+    // Add filter info if applied
+    if (filters.year_level) {
+      doc.text(`Class Filter: ${filters.year_level}`, margin, 24);
+    }
+    if (filters.search) {
+      doc.text(`Search: "${filters.search}"`, margin, 30);
+    }
 
     const body = data.map((s) => [
       s.id,
@@ -234,8 +303,10 @@ const NewAdmissionList = () => {
       s.previous_school,
     ]);
 
+    const startY = filters.year_level || filters.search ? 34 : 24;
+
     autoTable(doc, {
-      startY: 22,
+      startY: startY,
       theme: "grid",
       showHead: "everyPage",
       head: [
@@ -328,6 +399,16 @@ const NewAdmissionList = () => {
           <p className="text-center text-gray-500 mt-2">
             School Year : {schoolYear}
           </p>
+          {filters.year_level && (
+            <p className="text-center text-blue-600 dark:text-blue-400 mt-1">
+              Filtered by Class: {filters.year_level}
+            </p>
+          )}
+          {filters.search && (
+            <p className="text-center text-blue-600 dark:text-blue-400 mt-1">
+              Search: "{filters.search}"
+            </p>
+          )}
         </div>
 
         {/* Filters + Download */}
@@ -335,14 +416,15 @@ const NewAdmissionList = () => {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
               <select
-                className="select select-bordered w-48"
+                className="select select-bordered w-48 dark:bg-gray-700 dark:text-white"
                 value={filters.year_level}
-                onChange={(e) =>
+                onChange={(e) => {
                   setFilters({
                     ...filters,
                     year_level: e.target.value,
-                  })
-                }
+                  });
+                  setOffset(0); // Reset pagination when filter changes
+                }}
               >
                 <option value="">All Classes</option>
                 {[...Array(12)].map((_, i) => (
@@ -352,7 +434,10 @@ const NewAdmissionList = () => {
                 ))}
               </select>
 
-              <button className="btn bgTheme text-white" onClick={resetFilters}>
+              <button 
+                className="btn bgTheme text-white" 
+                onClick={resetFilters}
+              >
                 Reset
               </button>
 
@@ -368,20 +453,22 @@ const NewAdmissionList = () => {
                 </button>
 
                 {showDownloadOptions && (
-                  <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-gray-800 rounded-md shadow-lg z-20 border border-gray-200 dark:border-gray-700">
+                  <div className="absolute left-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-20 border border-gray-200 dark:border-gray-700">
                     <button
                       onClick={() => handleDownload("pdf")}
-                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600"
+                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:text-white"
                       disabled={isDownloading}
                     >
-                      PDF
+                      <i className="fa-solid fa-file-pdf mr-2 text-red-500"></i>
+                      Download as PDF
                     </button>
                     <button
                       onClick={() => handleDownload("excel")}
-                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600"
+                      className="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:text-white"
                       disabled={isDownloading}
                     >
-                      Excel
+                      <i className="fa-solid fa-file-excel mr-2 text-green-500"></i>
+                      Download as Excel
                     </button>
                   </div>
                 )}
@@ -391,25 +478,31 @@ const NewAdmissionList = () => {
             <input
               type="text"
               placeholder="Search Student..."
-              className="input input-bordered w-full md:w-72"
+              className="input input-bordered w-full md:w-72 dark:bg-gray-700 dark:text-white"
               value={filters.search}
-              onChange={(e) =>
+              onChange={(e) => {
                 setFilters({
                   ...filters,
                   search: e.target.value,
-                })
-              }
+                });
+                setOffset(0); // Reset pagination when search changes
+              }}
             />
           </div>
         </div>
 
         {/* Table */}
-        {filteredStudents.length === 0 ? (
+        {displayStudents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
             <i className="fa-solid fa-user-slash text-5xl text-gray-400 mb-4"></i>
             <p className="text-gray-500 dark:text-gray-300">
               No New Admissions Found
             </p>
+            {filters.year_level && (
+              <p className="text-sm text-gray-400 mt-2">
+                No students found in Class {filters.year_level}
+              </p>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto no-scrollbar max-h-[70vh] rounded-lg">
@@ -426,7 +519,7 @@ const NewAdmissionList = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredStudents.map((student, index) => (
+                {displayStudents.map((student, index) => (
                   <tr
                     key={student.id}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -434,28 +527,39 @@ const NewAdmissionList = () => {
                     <td>{offset + index + 1}.</td>
                     <td>
                       <div>
-                        <p className="font-semibold">
-                          {student.student_input?.first_name}{" "}
-                          {student.student_input?.middle_name}{" "}
-                          {student.student_input?.last_name}
+                        <p className="font-semibold dark:text-white">
+                          {student.student_input?.first_name || ""}{" "}
+                          {student.student_input?.middle_name || ""}{" "}
+                          {student.student_input?.last_name || ""}
                         </p>
+                        {student.student_input?.roll_number && (
+                          <p className="text-xs text-gray-500">
+                            Roll: {student.student_input?.roll_number}
+                          </p>
+                        )}
                       </div>
                     </td>
-                    <td>{student.student_input?.father_name || "-"}</td>
-                    <td>{student.year_level || "-"}</td>
-                    <td>
+                    <td className="dark:text-gray-300">
+                      {student.student_input?.father_name || "-"}
+                    </td>
+                    <td className="dark:text-gray-300">
+                      {student.year_level || "-"}
+                    </td>
+                    <td className="dark:text-gray-300">
                       {student.student_input?.contact_number ||
                         student.guardian_input?.phone_no ||
                         "-"}
                     </td>
-                    <td>
+                    <td className="dark:text-gray-300">
                       {student.admission_date
                         ? new Date(student.admission_date).toLocaleDateString(
                             "en-GB"
                           )
                         : "-"}
                     </td>
-                    <td>{student.previous_school_name || "-"}</td>
+                    <td className="dark:text-gray-300">
+                      {student.previous_school_name || "-"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -466,22 +570,23 @@ const NewAdmissionList = () => {
         {/* Pagination */}
         <div className="flex justify-between items-center mt-6">
           <p className="text-sm text-gray-600 dark:text-gray-300">
-            Showing {filteredStudents.length} of {count} Students
+            Showing {displayStudents.length} of {displayCount} Students
+            {filters.year_level && ` in Class ${filters.year_level}`}
           </p>
           <div className="join">
             <button
-              className="join-item btn"
+              className="join-item btn dark:bg-gray-700 dark:text-white"
               disabled={offset === 0}
               onClick={() => setOffset((prev) => Math.max(prev - LIMIT, 0))}
             >
               Previous
             </button>
-            <button className="join-item btn btn-disabled">
+            <button className="join-item btn btn-disabled dark:bg-gray-600 dark:text-white">
               {Math.floor(offset / LIMIT) + 1}
             </button>
             <button
-              className="join-item btn"
-              disabled={offset + LIMIT >= count}
+              className="join-item btn dark:bg-gray-700 dark:text-white"
+              disabled={offset + LIMIT >= displayCount}
               onClick={() => setOffset(offset + LIMIT)}
             >
               Next
