@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useCallback } from "react";
 import { fetchSchoolYear, fetchYearLevels } from "../../services/api/Api";
 import { allRouterLink } from "../../router/AllRouterLinks";
 import { Link } from "react-router-dom";
@@ -6,16 +6,21 @@ import { AuthContext } from "../../context/AuthContext";
 
 const FeeSummaryTable = () => {
   const { axiosInstance } = useContext(AuthContext);
-  const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Filter states
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedSchoolYear, setSelectedSchoolYear] = useState("");
   const [selectedFeeType, setSelectedFeeType] = useState("");
-  const [yearLevels, setYearLevels] = useState([]);
-  const [error, setError] = useState(null);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // Data states
   const [allStudents, setAllStudents] = useState([]);
+  const [yearLevels, setYearLevels] = useState([]);
   const [schoolYears, setSchoolYears] = useState([]);
   const [debounceTimeout, setDebounceTimeout] = useState(null);
 
@@ -26,71 +31,49 @@ const FeeSummaryTable = () => {
   const [nextUrl, setNextUrl] = useState(null);
   const [prevUrl, setPrevUrl] = useState(null);
 
-  const getSchoolYear = async () => {
-    try {
-      const data = await fetchSchoolYear();
-      setSchoolYears(data);
-    } catch (err) {
-      console.error("Error fetching school years:", err);
-    }
-  };
-
-  const getYearLevels = async () => {
-    try {
-      const data = await fetchYearLevels();
-      setYearLevels(data);
-    } catch (err) {
-      console.error("Error fetching year levels:", err);
-    }
-  };
-
+  // Fetch school years and year levels
   useEffect(() => {
-    getYearLevels();
-    getSchoolYear();
+    const fetchInitialData = async () => {
+      try {
+        const [years, levels] = await Promise.all([
+          fetchSchoolYear(),
+          fetchYearLevels()
+        ]);
+        setSchoolYears(years || []);
+        setYearLevels(levels || []);
+      } catch (err) {
+        console.error("Error fetching initial data:", err);
+      }
+    };
+    fetchInitialData();
   }, []);
 
   // Extract unique months from payments
-  const getMonthsFromPayments = (payments) => {
+  const getMonthsFromPayments = useCallback((payments) => {
     if (!payments || !Array.isArray(payments)) return [];
     const months = payments
       .filter(p => p.month)
       .map(p => p.month)
       .filter(month => month !== null && month !== undefined);
-    return [...new Set(months)]; // Remove duplicates
-  };
+    return [...new Set(months)];
+  }, []);
 
   // Get all fee types from payments
-  const getFeeTypesFromPayments = (payments) => {
+  const getFeeTypesFromPayments = useCallback((payments) => {
     if (!payments || !Array.isArray(payments)) return [];
     const feeTypes = payments
       .filter(p => p.fee_type)
       .map(p => p.fee_type)
       .filter(type => type !== null && type !== undefined);
-    return [...new Set(feeTypes)]; // Remove duplicates
-  };
+    return [...new Set(feeTypes)];
+  }, []);
 
-  // Build query parameters for search API
-  const buildSearchParams = (page = 1) => {
+  // ✅ FIXED: Build query parameters - ALL filters go to backend
+  const buildSearchParams = useCallback((page = 1) => {
     const params = new URLSearchParams();
-    const offset = (page - 1) * pageSize;
-    params.append("limit", pageSize);
-    params.append("offset", offset);
-
-    // Add filters if selected
-    if (selectedMonth) {
-      params.append("month", selectedMonth);
-    }
-    if (selectedClass) {
-      // Find class ID from yearLevels
-      const classItem = yearLevels.find(
-        (level) => level.level_name === selectedClass
-      );
-      if (classItem) {
-        params.append("class_id", classItem.id);
-      }
-    }
+    
+    // ✅ Add ALL filters FIRST - Backend will handle filtering
     if (selectedSchoolYear) {
-      // Find school year ID
       const yearItem = schoolYears.find(
         (year) => year.year_name === selectedSchoolYear
       );
@@ -98,23 +81,54 @@ const FeeSummaryTable = () => {
         params.append("school_year_id", yearItem.id);
       }
     }
-    if (selectedFeeType) {
-      params.append("fee_type", selectedFeeType);
-    }
-    if (searchTerm.trim()) {
-      // Check if search term is a number (scholar number)
-      if (!isNaN(searchTerm.trim())) {
-        params.append("scholar_number", searchTerm.trim());
-      } else {
-        params.append("student", searchTerm.trim());
+
+    if (selectedClass) {
+      const classItem = yearLevels.find(
+        (level) => level.level_name === selectedClass
+      );
+      if (classItem) {
+        params.append("class_id", classItem.id);
       }
     }
 
-    return params.toString();
-  };
+    if (selectedMonth) {
+      params.append("month", selectedMonth);
+    }
 
-  // Fetch data with pagination
-  const fetchData = async (page = 1) => {
+    // ✅ FIX: Send fee_type to backend
+    if (selectedFeeType) {
+      params.append("fee_type", selectedFeeType);
+    }
+
+    if (fromDate) {
+      params.append("start_date", fromDate);
+    }
+    if (toDate) {
+      params.append("end_date", toDate);
+    }
+
+    if (searchTerm.trim()) {
+      const searchValue = searchTerm.trim();
+      if (searchValue.startsWith('REC-')) {
+        params.append("receipt_number", searchValue);
+      } else if (!isNaN(searchValue) && searchValue.length > 0) {
+        params.append("scholar_number", searchValue);
+      } else {
+        params.append("student", searchValue);
+      }
+    }
+
+    // Add pagination parameters LAST
+    const offset = (page - 1) * pageSize;
+    params.append("limit", pageSize);
+    params.append("offset", offset);
+
+    console.log("🔍 API URL:", `/d/studentfees/search_receipts/?${params.toString()}`);
+    return params.toString();
+  }, [selectedMonth, selectedClass, selectedSchoolYear, selectedFeeType, fromDate, toDate, searchTerm, pageSize, yearLevels, schoolYears]);
+
+  // ✅ Fetch data with proper error handling
+  const fetchData = useCallback(async (page = 1) => {
     setLoading(true);
     setError(null);
 
@@ -123,119 +137,166 @@ const FeeSummaryTable = () => {
       const response = await axiosInstance.get(
         `/d/studentfees/search_receipts/?${queryParams}`
       );
+      
+      console.log("📦 Response:", response.data);
+
       const data = response.data;
 
-      if (
-        data &&
-        typeof data === "object" &&
-        data.detail === "No records found."
-      ) {
-        setAllStudents([]);
-        setTotalCount(0);
-        setNextUrl(null);
-        setPrevUrl(null);
-      } else if (data && typeof data === "object" && data.results) {
-        setAllStudents(data.results);
-        setTotalCount(data.count);
-        setNextUrl(data.next);
-        setPrevUrl(data.previous);
+      if (response.status === 200 || response.status === 201) {
+        if (data && typeof data === 'object' && 'results' in data) {
+          if (Array.isArray(data.results)) {
+            setAllStudents(data.results);
+            setTotalCount(data.count || data.results.length || 0);
+            setNextUrl(data.next || null);
+            setPrevUrl(data.previous || null);
+            setError(null);
+            console.log(`✅ Found ${data.results.length} records`);
+          } else {
+            setAllStudents([]);
+            setTotalCount(0);
+            setNextUrl(null);
+            setPrevUrl(null);
+            setError(null);
+          }
+        } else if (Array.isArray(data)) {
+          setAllStudents(data);
+          setTotalCount(data.length);
+          setNextUrl(null);
+          setPrevUrl(null);
+          setError(null);
+        } else if (data && typeof data === 'object' && 'detail' in data) {
+          console.log("ℹ️", data.detail);
+          setAllStudents([]);
+          setTotalCount(0);
+          setNextUrl(null);
+          setPrevUrl(null);
+          setError(null);
+        } else {
+          setAllStudents([]);
+          setTotalCount(0);
+          setNextUrl(null);
+          setPrevUrl(null);
+          setError(null);
+        }
       } else {
-        setError("Unexpected response from server.");
+        setError(`Failed to fetch data. Status: ${response.status}`);
       }
     } catch (err) {
-      console.error(err);
-      setError("Failed to fetch data.");
+      console.error("❌ Fetch error:", err);
+      
+      if (err.response) {
+        const status = err.response.status;
+        if (status === 404 || status === 400) {
+          setAllStudents([]);
+          setTotalCount(0);
+          setNextUrl(null);
+          setPrevUrl(null);
+          setError(null);
+        } else if (status === 401) {
+          setError("Authentication failed. Please login again.");
+        } else if (status === 500) {
+          setError("Server error. Please try again later.");
+        } else {
+          setAllStudents([]);
+          setTotalCount(0);
+          setNextUrl(null);
+          setPrevUrl(null);
+          setError(null);
+        }
+      } else if (err.request) {
+        setError("Network error. Please check your connection.");
+      } else {
+        setError("An unexpected error occurred.");
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [buildSearchParams, axiosInstance]);
 
   // Initial load
   useEffect(() => {
     fetchData(1);
-  }, []);
+  }, [fetchData]);
 
-  // Handle filter changes – reset to page 1 and fetch
-  const handleFilterChange = (setter, value) => {
+  // Handle filter changes
+  const handleFilterChange = useCallback((setter, value) => {
     setter(value);
     setCurrentPage(1);
-    fetchData(1);
-  };
+    setError(null);
+  }, []);
 
-  const resetFilters = () => {
+  // Handle date range with validation
+  const handleDateChange = useCallback((setter, value) => {
+    if (setter === setFromDate && toDate && value > toDate) {
+      alert("⚠️ From date cannot be greater than To date");
+      return;
+    }
+    if (setter === setToDate && fromDate && value < fromDate) {
+      alert("⚠️ To date cannot be less than From date");
+      return;
+    }
+    handleFilterChange(setter, value);
+  }, [fromDate, toDate, handleFilterChange]);
+
+  // Reset all filters
+  const resetFilters = useCallback(() => {
     setSelectedMonth("");
     setSelectedClass("");
     setSelectedSchoolYear("");
     setSelectedFeeType("");
     setSearchTerm("");
+    setFromDate("");
+    setToDate("");
     setCurrentPage(1);
-    fetchData(1);
-  };
+    setError(null);
+  }, []);
 
   // Search handler with debounce
-  const handleSearch = (value) => {
+  const handleSearch = useCallback((value) => {
     setSearchTerm(value);
     setCurrentPage(1);
+    setError(null);
     
-    // Clear existing timeout
     if (debounceTimeout) {
       clearTimeout(debounceTimeout);
     }
     
-    // Set new timeout
     const timeout = setTimeout(() => {
       fetchData(1);
     }, 500);
     setDebounceTimeout(timeout);
-  };
+  }, [debounceTimeout, fetchData]);
+
+  // Auto-fetch when filters change
+  useEffect(() => {
+    if (currentPage === 1) {
+      fetchData(1);
+    }
+  }, [selectedMonth, selectedClass, selectedSchoolYear, selectedFeeType, fromDate, toDate, fetchData]);
 
   // Pagination handlers
-  const goToPreviousPage = () => {
+  const goToPreviousPage = useCallback(() => {
     if (currentPage > 1) {
       const newPage = currentPage - 1;
       setCurrentPage(newPage);
       fetchData(newPage);
     }
-  };
+  }, [currentPage, fetchData]);
 
-  const goToNextPage = () => {
+  const goToNextPage = useCallback(() => {
     if (nextUrl) {
       const newPage = currentPage + 1;
       setCurrentPage(newPage);
       fetchData(newPage);
     }
-  };
+  }, [nextUrl, fetchData]);
 
-  // Apply client-side filters on the current page data
-  const filteredStudents = allStudents
-    .filter((item) => {
-      const monthsPaid = getMonthsFromPayments(item.payments);
-      
-      // School year filter (if not handled by API)
-      const matchSchoolYear =
-        !selectedSchoolYear ||
-        item.school_year === selectedSchoolYear;
-
-      // Month filter (if not handled by API)
-      const matchMonth = !selectedMonth || monthsPaid.includes(selectedMonth);
-
-      // Fee type filter (if not handled by API)
-      const feeTypes = getFeeTypesFromPayments(item.payments);
-      const matchFeeType = !selectedFeeType || feeTypes.includes(selectedFeeType);
-
-      return matchSchoolYear && matchMonth && matchFeeType;
-    })
-    .sort((a, b) => {
-      const nameA = a.student?.name || "";
-      const nameB = b.student?.name || "";
-      return nameA.localeCompare(nameB);
-    });
-
-  // Compute pagination info
+  // Calculate pagination info
   const totalPages = Math.ceil(totalCount / pageSize);
-  const startIndex = (currentPage - 1) * pageSize + 1;
+  const startIndex = totalCount > 0 ? (currentPage - 1) * pageSize + 1 : 0;
   const endIndex = Math.min(currentPage * pageSize, totalCount);
 
+  // Loading state
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
@@ -249,42 +310,82 @@ const FeeSummaryTable = () => {
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          <p>{error}</p>
-          <button 
-            onClick={() => fetchData(currentPage)}
-            className="mt-2 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-          >
-            Retry
-          </button>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg max-w-md">
+          <div className="flex items-start">
+            <svg className="w-6 h-6 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <h3 className="font-semibold">Error Loading Data</h3>
+              <p className="text-sm mt-1">{error}</p>
+              <button 
+                onClick={() => fetchData(currentPage)}
+                className="mt-3 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 text-sm transition"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    // <div className="min-h-screen p-5 bg-gray-50 dark:bg-gray-900 mb-24 md:mb-10">
     <div className="min-h-screen px-2 py-5 bg-gray-50 dark:bg-gray-900 mb-24 md:mb-10">
-      {/* <div className="bg-white dark:bg-gray-800 max-w-7xl p-6 rounded-lg shadow-lg mx-auto"> */}
       <div className="bg-white dark:bg-gray-800 w-[96%] max-w-[1700px] p-6 rounded-xl shadow-lg mx-auto">
         <div className="mb-4">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100 text-center">
-            <i className="fa-solid fa-graduation-cap mr-2"></i> Students Fee
-            Record
+            <i className="fa-solid fa-graduation-cap mr-2"></i> Students Fee Record
           </h1>
+          
+          <div className="text-center mt-2">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {totalCount > 0 ? (
+                <>Showing <strong>{allStudents.length}</strong> of <strong>{totalCount}</strong> records</>
+              ) : (
+                <span className="text-gray-400">📭 No records found</span>
+              )}
+              {Object.values({selectedSchoolYear, selectedClass, selectedMonth, selectedFeeType, fromDate, toDate, searchTerm}).some(v => v) && (
+                <span className="ml-2 text-blue-600 dark:text-blue-400">🔍 Filtered</span>
+              )}
+            </span>
+          </div>
         </div>
 
         {/* Filter Section */}
         <div className="w-full px-5">
           <div className="flex flex-wrap justify-between items-end gap-4 mb-2 w-full border-b pb-4 border-gray-200 dark:border-gray-700">
-            <div className="flex flex-wrap items-end gap-4 w-full sm:w-auto">
-              {/* Class Filter */}
-              <div className="flex flex-col w-full sm:w-auto">
+            <div className="flex flex-wrap items-end gap-4 w-full">
+              {/* School Year Filter */}
+              <div className="flex flex-col w-full sm:w-auto min-w-[150px]">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Select Class
+                  School Year
+                </label>
+                <select
+                  className="select select-bordered w-full focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                  value={selectedSchoolYear}
+                  onChange={(e) =>
+                    handleFilterChange(setSelectedSchoolYear, e.target.value)
+                  }
+                >
+                  <option value="">All Years</option>
+                  {schoolYears.map((year) => (
+                    <option key={year.id} value={year.year_name}>
+                      {year.year_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Class Filter */}
+              <div className="flex flex-col w-full sm:w-auto min-w-[150px]">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Class
                 </label>
                 <select
                   className="select select-bordered w-full focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
@@ -303,9 +404,9 @@ const FeeSummaryTable = () => {
               </div>
 
               {/* Month Filter */}
-              <div className="flex flex-col w-full sm:w-auto">
+              <div className="flex flex-col w-full sm:w-auto min-w-[150px]">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Select Month
+                  Month
                 </label>
                 <select
                   className="select select-bordered w-full focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
@@ -316,18 +417,8 @@ const FeeSummaryTable = () => {
                 >
                   <option value="">All Months</option>
                   {[
-                    "January",
-                    "February",
-                    "March",
-                    "April",
-                    "May",
-                    "June",
-                    "July",
-                    "August",
-                    "September",
-                    "October",
-                    "November",
-                    "December",
+                    "January", "February", "March", "April", "May", "June",
+                    "July", "August", "September", "October", "November", "December"
                   ].map((month) => (
                     <option key={month} value={month}>
                       {month}
@@ -336,29 +427,8 @@ const FeeSummaryTable = () => {
                 </select>
               </div>
 
-              {/* Year Filter */}
-              <div className="flex flex-col w-full sm:w-auto">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Select Year
-                </label>
-                <select
-                  className="select select-bordered w-full focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
-                  value={selectedSchoolYear}
-                  onChange={(e) =>
-                    handleFilterChange(setSelectedSchoolYear, e.target.value)
-                  }
-                >
-                  <option value="">All Years</option>
-                  {schoolYears.map((year) => (
-                    <option key={year.id} value={year.year_name}>
-                      {year.year_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Fee Type Filter */}
-              <div className="flex flex-col w-full sm:w-auto">
+              {/* ✅ Fee Type Filter - Sends to backend */}
+              <div className="flex flex-col w-full sm:w-auto min-w-[150px]">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Fee Type
                 </label>
@@ -372,19 +442,46 @@ const FeeSummaryTable = () => {
                   <option value="">All Types</option>
                   <option value="Tuition Fee (General)">Tuition Fee (General)</option>
                   <option value="Tuition Fee (PCM/PCB)">Tuition Fee (PCM/PCB)</option>
+                  <option value="Tuition Fee (Comm/Arts)">Tution Fee (Comm/Arts)</option>
                   <option value="Admission Fee">Admission Fee</option>
                   <option value="Exam Fee">Exam Fee</option>
                   <option value="Activity Fee">Activity Fee</option>
                   <option value="Caution Fee">Caution Fee</option>
                   <option value="Maintenance">Maintenance</option>
+                  <option value="Others">Others</option>
                 </select>
               </div>
 
-              {/* Reset */}
+              {/* Date Range Filters */}
+              <div className="flex flex-col w-full sm:w-auto min-w-[150px]">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  From Date
+                </label>
+                <input
+                  type="date"
+                  className="input input-bordered w-full focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                  value={fromDate}
+                  onChange={(e) => handleDateChange(setFromDate, e.target.value)}
+                />
+              </div>
+
+              <div className="flex flex-col w-full sm:w-auto min-w-[150px]">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  To Date
+                </label>
+                <input
+                  type="date"
+                  className="input input-bordered w-full focus:outline-none dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+                  value={toDate}
+                  onChange={(e) => handleDateChange(setToDate, e.target.value)}
+                />
+              </div>
+
+              {/* Reset Button */}
               <div className="mt-1 w-full sm:w-auto">
                 <button
                   onClick={resetFilters}
-                  className="bgTheme text-white text-sm px-5 py-2 rounded font-semibold h-10 w-full sm:w-auto"
+                  className="bgTheme text-white text-sm px-5 py-2 rounded font-semibold h-10 w-full sm:w-auto hover:bg-opacity-80 transition"
                 >
                   Reset Filters
                 </button>
@@ -395,7 +492,7 @@ const FeeSummaryTable = () => {
             <div className="flex flex-col w-full sm:flex-row sm:items-end gap-4 sm:w-auto">
               <input
                 type="text"
-                placeholder="Enter name, receipt no, scholar no..."
+                placeholder="Search by name, receipt, scholar..."
                 value={searchTerm}
                 onChange={(e) => handleSearch(e.target.value)}
                 className="border px-3 py-2 rounded w-full sm:w-64 dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600 focus:outline-none"
@@ -403,7 +500,7 @@ const FeeSummaryTable = () => {
 
               <Link
                 to={allRouterLink.feeDashboard}
-                className="bgTheme text-white text-sm px-5 py-2 rounded font-semibold h-10 w-full sm:w-auto text-center"
+                className="bgTheme text-white text-sm px-5 py-2 rounded font-semibold h-10 w-full sm:w-auto text-center hover:bg-opacity-80 transition"
               >
                 Fee Dashboard
               </Link>
@@ -416,32 +513,59 @@ const FeeSummaryTable = () => {
           <table className="min-w-full rounded-lg">
             <thead className="bgTheme text-white sticky top-0">
               <tr>
-                <th className="px-4 py-3">S.No</th>
-                <th className="px-4 py-3">Receipt No</th>
-                <th className="px-4 py-3">Student Name</th>
-                <th className="px-4 py-3">Class</th>
-                <th className="px-4 py-3">Section</th>
-                <th className="px-4 py-3">School Year</th>
-                <th className="px-4 py-3">Fee Types</th>
-                <th className="px-4 py-3">Months Paid</th>
-                <th className="px-4 py-3">Date</th>
-                <th className="px-4 py-3 text-nowrap">Paid Amount</th>
-                <th className="px-4 py-3">View</th>
+                <th className="px-4 py-3 text-left">S.No</th>
+                <th className="px-4 py-3 text-left">Receipt No</th>
+                <th className="px-4 py-3 text-left">Student Name</th>
+                <th className="px-4 py-3 text-left">Class</th>
+                <th className="px-4 py-3 text-left">Section</th>
+                <th className="px-4 py-3 text-left">School Year</th>
+                <th className="px-4 py-3 text-left">Fee Types</th>
+                <th className="px-4 py-3 text-left">Months Paid</th>
+                <th className="px-4 py-3 text-left">Payment Date</th>
+                <th className="px-4 py-3 text-left">Paid Amount</th>
+                <th className="px-4 py-3 text-left">View</th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
-              {filteredStudents.length === 0 ? (
+              {allStudents.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan="12"
-                    className="text-center py-6 text-gray-500 dark:text-gray-400"
-                  >
-                    No data found.
+                  <td colSpan="11" className="text-center py-12">
+                    <div className="flex flex-col items-center justify-center">
+                      <svg 
+                        className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-3" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth="2" 
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                      <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
+                        No Records Found
+                      </p>
+                      <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">
+                        {Object.values({selectedSchoolYear, selectedClass, selectedMonth, selectedFeeType, fromDate, toDate, searchTerm}).some(v => v) 
+                          ? "Try adjusting your filters or search criteria" 
+                          : "No data available to display"}
+                      </p>
+                      {Object.values({selectedSchoolYear, selectedClass, selectedMonth, selectedFeeType, fromDate, toDate, searchTerm}).some(v => v) && (
+                        <button
+                          onClick={resetFilters}
+                          className="mt-4 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium underline"
+                        >
+                          Clear all filters
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : (
-                filteredStudents.map((record, index) => {
+                allStudents.map((record, index) => {
                   const monthsPaid = getMonthsFromPayments(record.payments);
                   const feeTypes = getFeeTypesFromPayments(record.payments);
 
@@ -505,18 +629,19 @@ const FeeSummaryTable = () => {
                       </td>
 
                       <td className="px-4 py-3 text-gray-800 dark:text-gray-100 text-nowrap">
-                        {record.payment_date}
+                        {record.payment_date || "—"}
                       </td>
 
                       <td className="px-4 py-3 text-gray-800 dark:text-gray-100 text-nowrap font-semibold">
                         ₹{record.total_amount_paid}
                       </td>
 
-                      <td className="px-4 underline textTheme hover:text-blue-800 dark:hover:text-blue-200 cursor-pointer text-center text-nowrap">
+                      <td className="px-4 py-3 text-center">
                         <Link
                           to={allRouterLink.viewFeesDetails
                             .replace(":id", record.student?.student_year_id || record.student?.id)
                             .replace(":receipt_number", record.receipt_number)}
+                          className="underline textTheme hover:text-blue-800 dark:hover:text-blue-200"
                         >
                           View
                         </Link>
