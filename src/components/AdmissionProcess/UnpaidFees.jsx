@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useRef } from "react";
 import { fetchYearLevels } from "../../services/api/Api";
 import { AuthContext } from "../../context/AuthContext";
 import { constants } from "../../global/constants";
@@ -12,11 +12,20 @@ const UnpaidFeesList = () => {
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedClass, setSelectedClass] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState(""); // For debounced search
   const [yearLevels, setYearLevels] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [loder, setLoder] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+
+  // Debounce timer ref
+  const debounceTimer = useRef(null);
 
   // Fetch year levels 
   const getYearLevels = async () => {
@@ -31,34 +40,74 @@ const UnpaidFeesList = () => {
   const loadUnpaidFees = async () => {
     try {
       setLoading(true);
-      const response = await axiosInstance.get("/d/studentfees/overdue_fees/");
-      const data = Array.isArray(response.data) ? response.data : [];
-      setUnpaidFees(data);
+      
+      // Build query parameters with pagination
+      const params = new URLSearchParams();
+      params.append('limit', itemsPerPage);
+      params.append('offset', (currentPage - 1) * itemsPerPage);
+      
+      // Add month filter
+      if (selectedMonth) {
+        const monthNumber = new Date(`${selectedMonth} 1, 2000`).getMonth() + 1;
+        params.append('month', monthNumber);
+      }
+      
+      // Add class filter
+      if (selectedClass) {
+        const selectedLevel = yearLevels.find(level => level.level_name === selectedClass);
+        if (selectedLevel) {
+          params.append('student_year_id', selectedLevel.id);
+        }
+      }
+
+      // Add search filter - use debounced search
+      if (debouncedSearch.trim()) {
+        params.append('search', debouncedSearch.trim());
+      }
+
+      const response = await axiosInstance.get(`/d/studentfees/overdue_fees/?${params.toString()}`);
+      
+      // Handle paginated response
+      if (response.data && response.data.results) {
+        setUnpaidFees(response.data.results);
+        setTotalItems(response.data.count || 0);
+      } else {
+        setUnpaidFees([]);
+        setTotalItems(0);
+      }
+      
       setError(null);
     } catch (err) {
       console.error("Error fetching unpaid fees:", err.response?.data || err.message);
       setError("Failed to load unpaid fees");
       setUnpaidFees([]);
+      setTotalItems(0);
     } finally {
       setLoading(false);
     }
   };
 
-  // Local filtering for all filters
-  const filteredFees = unpaidFees.filter((item) => {
-    console.log(item);
-
-    const matchesSearch = (item.student_name || "").toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesMonth = selectedMonth ? item.month === selectedMonth : true;
-    const matchesClass = selectedClass ? item.class_name == selectedClass : true;
-    return matchesSearch && matchesMonth && matchesClass;
-  });
-  console.log(selectedClass);
-
-  const sortedFees = [...filteredFees].sort((a, b) =>
+  // Sort fees
+  const sortedFees = [...unpaidFees].sort((a, b) =>
     (a.student_name || "").localeCompare(b.student_name || "", undefined, { sensitivity: "base" })
   );
 
+  // Handle search with debounce
+  const handleSearchChange = (e) => {
+    const value = e.target.value.trimStart();
+    setSearchTerm(value);
+    setCurrentPage(1);
+    
+    // Clear previous timer
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    
+    // Set new timer (500ms delay)
+    debounceTimer.current = setTimeout(() => {
+      setDebouncedSearch(value);
+    }, 500);
+  };
 
   // Send notification using axiosInstance 
   const handleSendNotifications = async () => {
@@ -80,24 +129,47 @@ const UnpaidFeesList = () => {
     getYearLevels();
   }, []);
 
+  // Reload when filters or pagination changes (except searchTerm)
   useEffect(() => {
-    loadUnpaidFees();
-  }, [selectedMonth, selectedClass]);
+    if (yearLevels.length > 0) {
+      loadUnpaidFees();
+    }
+  }, [selectedMonth, selectedClass, debouncedSearch, currentPage, itemsPerPage, yearLevels]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
 
   const resetFilters = () => {
     setSelectedMonth("");
     setSelectedClass("");
     setSearchTerm("");
+    setDebouncedSearch("");
+    setCurrentPage(1);
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
   };
 
-  // Updated filtering/sorting for flat shape
-  // const filteredFees = unpaidFees.filter((item) =>
-  //   (item.student_name || "").toLowerCase().includes(searchTerm.toLowerCase())
-  // );
+  // Pagination handlers
+  const handlePageChange = (newPage) => {
+    if (newPage > 0 && newPage <= Math.ceil(totalItems / itemsPerPage)) {
+      setCurrentPage(newPage);
+    }
+  };
 
-  // const sortedFees = [...filteredFees].sort((a, b) =>
-  //   (a.student_name || "").localeCompare(b.student_name || "", undefined, { sensitivity: "base" })
-  // );
+  const handleItemsPerPageChange = (e) => {
+    const newItemsPerPage = parseInt(e.target.value);
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
+
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   if (loading) {
     return (
@@ -141,7 +213,10 @@ const UnpaidFeesList = () => {
                 <select
                   className="select select-bordered w-full focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                   value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedMonth(e.target.value);
+                    setCurrentPage(1);
+                  }}
                 >
                   <option value="">All Months</option>
                   {[
@@ -160,7 +235,10 @@ const UnpaidFeesList = () => {
                   <select
                     className="select select-bordered w-full focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                     value={selectedClass}
-                    onChange={(e) => setSelectedClass(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedClass(e.target.value);
+                      setCurrentPage(1);
+                    }}
                   >
                     <option value="">All Classes</option>
                     {yearLevels.map((level) => (
@@ -181,29 +259,17 @@ const UnpaidFeesList = () => {
               </div>
             </div>
 
-            {/*  Search */}
+            {/* Search */}
             <div className="flex items-end gap-2 w-full sm:w-auto justify-end">
               <div className="flex flex-col w-full sm:w-auto">
                 <input
                   type="text"
                   placeholder="Enter student name"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value.trimStart())}
+                  onChange={handleSearchChange}
                   className="border px-3 py-2 rounded w-full sm:w-64 dark:bg-gray-700 dark:text-white dark:border-gray-600"
                 />
               </div>
-              {/* <button
-                onClick={handleSendNotifications}
-                className="btn bgTheme text-white"
-              >
-                {loder ? (
-                  <i className="fa-solid fa-spinner fa-spin mr-2"></i>
-                ) : (
-                  <>
-                    <i className="fa-solid fa-bell mr-2"></i> Reminder
-                  </>
-                )}
-              </button> */}
             </div>
           </div>
         </div>
@@ -236,7 +302,7 @@ const UnpaidFeesList = () => {
                   const isPaid = parseFloat(item.due_amount) <= 0 || item.status?.toLowerCase() === "paid";
                   return (
                     <tr key={item.fee_id || index} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-4 py-3">{index + 1}</td>
+                      <td className="px-4 py-3">{(currentPage - 1) * itemsPerPage + index + 1}</td>
                       <td className="px-4 py-3 text-nowrap font-bold">{item.student_name}</td>
                       <td className="px-4 py-3 text-nowrap">{item.class_name}</td>
                       <td className="px-4 py-3 text-nowrap">{item.month}</td>
@@ -257,6 +323,47 @@ const UnpaidFeesList = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {totalItems > 0 && (
+          <div className="flex justify-between items-center mt-6">
+            <div className="flex items-center gap-2">
+              <select
+                value={itemsPerPage}
+                onChange={handleItemsPerPageChange}
+                className="border rounded px-2 py-1 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems}
+              </span>
+            </div>
+            <div className="join">
+              <button
+                className="join-item btn dark:bg-gray-700 dark:text-white"
+                disabled={currentPage === 1}
+                onClick={() => handlePageChange(currentPage - 1)}
+              >
+                Previous
+              </button>
+              <button className="join-item btn btn-disabled dark:bg-gray-600 dark:text-white">
+                {currentPage}
+              </button>
+              <button
+                className="join-item btn dark:bg-gray-700 dark:text-white"
+                disabled={currentPage === totalPages || totalPages === 0}
+                onClick={() => handlePageChange(currentPage + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modal */}
