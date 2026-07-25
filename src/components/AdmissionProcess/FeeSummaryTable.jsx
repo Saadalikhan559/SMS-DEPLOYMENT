@@ -1,8 +1,11 @@
-import React, { useEffect, useState, useContext, useCallback } from "react";
+import React, { useEffect, useState, useContext, useCallback, useRef } from "react";
 import { fetchSchoolYear, fetchYearLevels } from "../../services/api/Api";
 import { allRouterLink } from "../../router/AllRouterLinks";
 import { Link } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const FeeSummaryTable = () => {
   const { axiosInstance } = useContext(AuthContext);
@@ -30,6 +33,12 @@ const FeeSummaryTable = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [nextUrl, setNextUrl] = useState(null);
   const [prevUrl, setPrevUrl] = useState(null);
+
+  // Download loading state
+  const [downloading, setDownloading] = useState(false);
+
+  // Table ref for PDF export
+  const tableRef = useRef(null);
 
   // Fetch school years and year levels
   useEffect(() => {
@@ -69,7 +78,7 @@ const FeeSummaryTable = () => {
   }, []);
 
   // ✅ FIXED: Build query parameters - ALL filters go to backend
-  const buildSearchParams = useCallback((page = 1) => {
+  const buildSearchParams = useCallback((page = 1, forDownload = false) => {
     const params = new URLSearchParams();
     
     // ✅ Add ALL filters FIRST - Backend will handle filtering
@@ -118,14 +127,45 @@ const FeeSummaryTable = () => {
       }
     }
 
-    // Add pagination parameters LAST
-    const offset = (page - 1) * pageSize;
-    params.append("limit", pageSize);
-    params.append("offset", offset);
+    // For download, get ALL records (no pagination)
+    if (forDownload) {
+      params.append("limit", 10000); // Large number to get all records
+      params.append("offset", 0);
+    } else {
+      // Add pagination parameters LAST
+      const offset = (page - 1) * pageSize;
+      params.append("limit", pageSize);
+      params.append("offset", offset);
+    }
 
-    console.log("🔍 API URL:", `/d/studentfees/search_receipts/?${params.toString()}`);
     return params.toString();
   }, [selectedMonth, selectedClass, selectedSchoolYear, selectedFeeType, fromDate, toDate, searchTerm, pageSize, yearLevels, schoolYears]);
+
+  // Fetch all data for download (without pagination)
+  const fetchAllDataForDownload = useCallback(async () => {
+    setDownloading(true);
+    try {
+      const queryParams = buildSearchParams(1, true);
+      const response = await axiosInstance.get(
+        `/d/studentfees/search_receipts/?${queryParams}`
+      );
+      
+      if (response.status === 200 || response.status === 201) {
+        const data = response.data;
+        if (data && typeof data === 'object' && 'results' in data) {
+          return Array.isArray(data.results) ? data.results : [];
+        } else if (Array.isArray(data)) {
+          return data;
+        }
+      }
+      return [];
+    } catch (err) {
+      console.error("Error fetching data for download:", err);
+      throw err;
+    } finally {
+      setDownloading(false);
+    }
+  }, [buildSearchParams, axiosInstance]);
 
   // ✅ Fetch data with proper error handling
   const fetchData = useCallback(async (page = 1) => {
@@ -138,8 +178,6 @@ const FeeSummaryTable = () => {
         `/d/studentfees/search_receipts/?${queryParams}`
       );
       
-      console.log("📦 Response:", response.data);
-
       const data = response.data;
 
       if (response.status === 200 || response.status === 201) {
@@ -150,7 +188,6 @@ const FeeSummaryTable = () => {
             setNextUrl(data.next || null);
             setPrevUrl(data.previous || null);
             setError(null);
-            console.log(`✅ Found ${data.results.length} records`);
           } else {
             setAllStudents([]);
             setTotalCount(0);
@@ -165,7 +202,6 @@ const FeeSummaryTable = () => {
           setPrevUrl(null);
           setError(null);
         } else if (data && typeof data === 'object' && 'detail' in data) {
-          console.log("ℹ️", data.detail);
           setAllStudents([]);
           setTotalCount(0);
           setNextUrl(null);
@@ -295,6 +331,197 @@ const FeeSummaryTable = () => {
   const totalPages = Math.ceil(totalCount / pageSize);
   const startIndex = totalCount > 0 ? (currentPage - 1) * pageSize + 1 : 0;
   const endIndex = Math.min(currentPage * pageSize, totalCount);
+
+  // 📥 DOWNLOAD FUNCTIONS
+
+  // Prepare data for export
+  const prepareExportData = useCallback((data) => {
+    return data.map((record, index) => {
+      const monthsPaid = getMonthsFromPayments(record.payments);
+      const feeTypes = getFeeTypesFromPayments(record.payments);
+      
+      return {
+        "S.No": index + 1,
+        "Receipt No": record.receipt_number || "—",
+        "Student Name": record.student?.name || "—",
+        "Class": record.student?.class_name || "—",
+        "Section": record.student?.class_section || "—",
+        "School Year": record.school_year || "—",
+        "Fee Types": feeTypes.join(", ") || "—",
+        "Months Paid": monthsPaid.join(", ") || "—",
+        "Payment Date": record.payment_date || "—",
+        "Paid Amount": `₹${record.total_amount_paid || 0}`,
+      };
+    });
+  }, [getMonthsFromPayments, getFeeTypesFromPayments]);
+
+  // 📥 Download as Excel
+  const downloadExcel = useCallback(async () => {
+    if (allStudents.length === 0) {
+      alert("No data available to download!");
+      return;
+    }
+
+    setDownloading(true);
+    try {
+      // If current view has all data, use it; otherwise fetch all
+      let dataToExport = allStudents;
+      
+      // Check if we need to fetch more data (if paginated and not all records shown)
+      if (totalCount > allStudents.length) {
+        const allData = await fetchAllDataForDownload();
+        if (allData.length > 0) {
+          dataToExport = allData;
+        }
+      }
+
+      const exportData = prepareExportData(dataToExport);
+      
+      // Create worksheet
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      
+      // Auto-size columns
+      const colWidths = Object.keys(exportData[0] || {}).map(key => ({
+        wch: Math.max(key.length, 15)
+      }));
+      ws['!cols'] = colWidths;
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Fee Records");
+      
+      // Generate filename with filters
+      let filename = "fee_records";
+      if (selectedSchoolYear) filename += `_${selectedSchoolYear}`;
+      if (selectedClass) filename += `_${selectedClass}`;
+      if (selectedMonth) filename += `_${selectedMonth}`;
+      filename += `_${new Date().toISOString().split('T')[0]}`;
+      
+      // Save file
+      XLSX.writeFile(wb, `${filename}.xlsx`);
+      
+    } catch (error) {
+      console.error("Error downloading Excel:", error);
+      alert("Failed to download Excel file. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }, [allStudents, totalCount, fetchAllDataForDownload, prepareExportData, selectedSchoolYear, selectedClass, selectedMonth]);
+
+  // 📥 Download as PDF
+  const downloadPDF = useCallback(async () => {
+    if (allStudents.length === 0) {
+      alert("No data available to download!");
+      return;
+    }
+
+    setDownloading(true);
+    try {
+      // If current view has all data, use it; otherwise fetch all
+      let dataToExport = allStudents;
+      
+      if (totalCount > allStudents.length) {
+        const allData = await fetchAllDataForDownload();
+        if (allData.length > 0) {
+          dataToExport = allData;
+        }
+      }
+
+      const exportData = prepareExportData(dataToExport);
+      
+      // Create PDF
+      const doc = new jsPDF('landscape', 'mm', 'a4');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      
+      // Add title
+      doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0);
+      doc.text('Students Fee Records', pageWidth / 2, 15, { align: 'center' });
+      
+      // Add filters info
+      let filterText = [];
+      if (selectedSchoolYear) filterText.push(`School Year: ${selectedSchoolYear}`);
+      if (selectedClass) filterText.push(`Class: ${selectedClass}`);
+      if (selectedMonth) filterText.push(`Month: ${selectedMonth}`);
+      if (selectedFeeType) filterText.push(`Fee Type: ${selectedFeeType}`);
+      if (fromDate && toDate) filterText.push(`Date: ${fromDate} to ${toDate}`);
+      if (searchTerm) filterText.push(`Search: ${searchTerm}`);
+      
+      if (filterText.length > 0) {
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Filters: ${filterText.join(' | ')}`, 14, 22);
+      }
+      
+      // Add date
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 28);
+      
+      // Prepare table data
+      const tableData = exportData.map(row => Object.values(row));
+      const headers = Object.keys(exportData[0] || {});
+      
+      // Add table
+      autoTable(doc, {
+        head: [headers],
+        body: tableData,
+        startY: 32,
+        styles: {
+          fontSize: 7,
+          cellPadding: 2,
+          overflow: 'linebreak',
+        },
+        headStyles: {
+          fillColor: [41, 128, 185],
+          textColor: 255,
+          fontSize: 8,
+          fontStyle: 'bold',
+        },
+        columnStyles: {
+          0: { cellWidth: 12 }, // S.No
+          1: { cellWidth: 25 }, // Receipt No
+          2: { cellWidth: 30 }, // Student Name
+          3: { cellWidth: 20 }, // Class
+          4: { cellWidth: 18 }, // Section
+          5: { cellWidth: 25 }, // School Year
+          6: { cellWidth: 40 }, // Fee Types
+          7: { cellWidth: 35 }, // Months Paid
+          8: { cellWidth: 25 }, // Payment Date
+          9: { cellWidth: 25 }, // Paid Amount
+        },
+        margin: { left: 10, right: 10 },
+        didDrawPage: function(data) {
+          // Add page number at bottom
+          const pageNumber = doc.internal.getCurrentPageInfo().pageNumber;
+          const totalPages = doc.internal.getNumberOfPages();
+          doc.setFontSize(8);
+          doc.setTextColor(150, 150, 150);
+          doc.text(
+            `Page ${pageNumber} of ${totalPages}`,
+            pageWidth - 30,
+            doc.internal.pageSize.getHeight() - 10
+          );
+        }
+      });
+      
+      // Generate filename
+      let filename = "fee_records";
+      if (selectedSchoolYear) filename += `_${selectedSchoolYear}`;
+      if (selectedClass) filename += `_${selectedClass}`;
+      if (selectedMonth) filename += `_${selectedMonth}`;
+      filename += `_${new Date().toISOString().split('T')[0]}`;
+      
+      // Save PDF
+      doc.save(`${filename}.pdf`);
+      
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      alert("Failed to download PDF file. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }, [allStudents, totalCount, fetchAllDataForDownload, prepareExportData, selectedSchoolYear, selectedClass, selectedMonth, selectedFeeType, fromDate, toDate, searchTerm]);
 
   // Loading state
   if (loading) {
@@ -488,7 +715,7 @@ const FeeSummaryTable = () => {
               </div>
             </div>
 
-            {/* Search + Dashboard */}
+            {/* Search + Dashboard + Download Buttons */}
             <div className="flex flex-col w-full sm:flex-row sm:items-end gap-4 sm:w-auto">
               <input
                 type="text"
@@ -504,12 +731,45 @@ const FeeSummaryTable = () => {
               >
                 Fee Dashboard
               </Link>
+
+              {/* Download Buttons */}
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button
+                  onClick={downloadExcel}
+                  disabled={downloading || allStudents.length === 0}
+                  className={`text-white text-sm px-4 py-2 rounded font-semibold h-10 flex items-center justify-center gap-2 transition ${
+                    downloading || allStudents.length === 0
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-green-600 hover:bg-green-700"
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                  </svg>
+                  {downloading ? "..." : "Excel"}
+                </button>
+                
+                <button
+                  onClick={downloadPDF}
+                  disabled={downloading || allStudents.length === 0}
+                  className={`text-white text-sm px-4 py-2 rounded font-semibold h-10 flex items-center justify-center gap-2 transition ${
+                    downloading || allStudents.length === 0
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-red-600 hover:bg-red-700"
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                  </svg>
+                  {downloading ? "..." : "PDF"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Table Section */}
-        <div className="w-full overflow-x-auto no-scrollbar max-h-[70vh] rounded-lg">
+        <div className="w-full overflow-x-auto no-scrollbar max-h-[70vh] rounded-lg" ref={tableRef}>
           <table className="min-w-full rounded-lg">
             <thead className="bgTheme text-white sticky top-0">
               <tr>
